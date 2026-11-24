@@ -1,3 +1,4 @@
+import { lowEndMap, lowEndMapOptions } from './lowEndMap'
 import maplibregl, { type GeoJSONSource } from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-csp-worker.js?url'
@@ -241,7 +242,7 @@ function create(data: MapData, appearance: Appearance): LiveMap {
   const element = document.createElement('div')
   element.className = 'road-map'
   addSeaProtocol(maplibregl)
-  const map = new maplibregl.Map({
+  const map = lowEndMap(new maplibregl.Map(lowEndMapOptions({
     container: element,
     style: mapStyle(appearance, data),
     center: data.centre,
@@ -258,7 +259,7 @@ function create(data: MapData, appearance: Appearance): LiveMap {
     attributionControl: false,
     fadeDuration: 0,
     canvasContextAttributes: { antialias: true },
-  })
+  })))
 
   // Added to the map when in range and clear of more important names (showLabels). Each says what
   // labelLines gives: the name in the player's language, under the place's own where that's in another

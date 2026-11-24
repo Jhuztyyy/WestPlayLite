@@ -187,6 +187,16 @@ fn update_settings(settings: Settings, store: State<SettingsStore>, app: AppHand
 }
 
 fn main() {
+    // Low-End Mode: reduce WebView2 memory footprint, disable smooth-scrolling & cap renderer processes
+    if std::env::var_os("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").is_none() {
+        #[allow(unused_unsafe)]
+        unsafe {
+            std::env::set_var(
+                "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+                "--enable-low-end-device-mode --disable-smooth-scrolling --renderer-process-limit=2",
+            );
+        }
+    }
     // Started as administrator only to copy the plugin into the game (setup asked for it): that, and done.
     let args: Vec<String> = std::env::args().collect();
     if let Some(code) = westplay_setup::plugin::run_as_administrator_copy(&args) {
