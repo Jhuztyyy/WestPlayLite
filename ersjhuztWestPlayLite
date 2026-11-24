@@ -1,0 +1,46 @@
+[1mdiff --git a/ui/src/cabin/apps/Lyrics.tsx b/ui/src/cabin/apps/Lyrics.tsx[m
+[1mindex 7a1a0c5..3eac05f 100644[m
+[1m--- a/ui/src/cabin/apps/Lyrics.tsx[m
+[1m+++ b/ui/src/cabin/apps/Lyrics.tsx[m
+[36m@@ -38,7 +38,7 @@[m [mexport function LyricsLines({[m
+     const line = scroller.querySelectorAll<HTMLElement>('.lyric')[Math.max(0, current)][m
+     if (!line) return[m
+     const top = line.offsetTop - scroller.clientHeight * 0.3[m
+[31m-    scroller.scrollTo({ top: Math.max(0, top), behavior: first.current ? 'auto' : 'smooth' })[m
+[32m+[m[32m    scroller.scrollTo({ top: Math.max(0, top), behavior: 'auto' })[m
+     first.current = false[m
+   }, [current, lyrics])[m
+ [m
+[1mdiff --git a/ui/src/cabin/apps/youtubeMusic/VideoPicture.tsx b/ui/src/cabin/apps/youtubeMusic/VideoPicture.tsx[m
+[1mindex 5d5a40f..a06c8b0 100644[m
+[1m--- a/ui/src/cabin/apps/youtubeMusic/VideoPicture.tsx[m
+[1m+++ b/ui/src/cabin/apps/youtubeMusic/VideoPicture.tsx[m
+[36m@@ -29,14 +29,7 @@[m [mexport function VideoPicture({ cover }: { cover: string | undefined }) {[m
+       useYouTubeMusic.setState({[m
+         hole: { x: box.left - area.left, y: box.top - area.top, width: box.width, height: box.height, radius },[m
+       })[m
+[31m-      const scale = window.devicePixelRatio[m
+[31m-      youtubeMusic({[m
+[31m-        action: 'show',[m
+[31m-        x: Math.round(box.left * scale),[m
+[31m-        y: Math.round(box.top * scale),[m
+[31m-        width: Math.round(box.width * scale),[m
+[31m-        height: Math.round(box.height * scale),[m
+[31m-      })[m
+[32m+[m[32m            /* Low-End Mode: music video overlay disabled */[m
+     }[m
+     const following = followArea(place, element)[m
+     // Now Playing rises in (a transform, which no size change tells of): placed again as it settles.[m
+[1mdiff --git a/ui/src/cabin/shell/Shell.tsx b/ui/src/cabin/shell/Shell.tsx[m
+[1mindex 8be2726..717667c 100644[m
+[1m--- a/ui/src/cabin/shell/Shell.tsx[m
+[1m+++ b/ui/src/cabin/shell/Shell.tsx[m
+[36m@@ -78,7 +78,7 @@[m [mexport function Shell({ children, overlay, entering = false }: ShellProps) {[m
+   // the apps and the screen changes' snapshots too.[m
+   const reduceTransparency = useCabin((state) => state.reduceTransparency)[m
+   useLayoutEffect(() => {[m
+[31m-    document.documentElement.classList.toggle('reduce-transparency', reduceTransparency)[m
+[32m+[m[32m    document.documentElement.classList.toggle('reduce-transparency', true)[m
+   }, [reduceTransparency])[m
+   // Liquid Glass's lens and touch, for every glass surface as it comes (liquidGlass.ts).[m
+   useEffect(() => startLiquidGlass(), [])[m

@@ -60,14 +60,9 @@ pub fn same(a: LUID, b: LUID) -> bool {
 /// The GPU to draw the cab on: the player's `chosen` one if it's among `adapters`; otherwise the `game`'s
 /// once it's known; otherwise the one it's drawn on now (`current`), so the game closing changes nothing;
 /// otherwise the first (Windows' high-performance GPU). `None` without any GPU listed.
-pub fn choose(chosen: Option<&str>, game: Option<LUID>, current: Option<LUID>, adapters: &[Adapter]) -> Option<LUID> {
-    let listed = |luid: LUID| adapters.iter().any(|a| same(a.luid, luid)).then_some(luid);
-    chosen
-        .and_then(|id| adapters.iter().find(|a| a.id == id))
-        .map(|a| a.luid)
-        .or_else(|| game.and_then(listed))
-        .or_else(|| current.and_then(listed))
-        .or_else(|| adapters.first().map(|a| a.luid))
+pub fn choose(_chosen: Option<&str>, _game: Option<LUID>, _current: Option<LUID>, _adapters: &[Adapter]) -> Option<LUID> {
+    // Low-End Mode: keep WebView2 on the integrated GPU with default browser args so Radeon 530 stays free for ETS2.
+    None
 }
 
 /// The browser argument that has WebView2 draw on `luid`.

@@ -34,6 +34,7 @@ mod gpu_contention;
 pub mod settings;
 mod signin;
 pub mod speakers;
+mod smtc;
 mod spotify;
 pub mod startup;
 mod typing;
@@ -1022,9 +1023,24 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                     }
                 }
                 Some(PageMessage::Player { command }) => {
-                    if music_player.is_none() && matches!(command, music_folder::Command::Pause) {
-                        // Nothing to pause: Player's player isn't running.
-                    } else if let Some(player) = start_music_player(&mut music_player, &stage, &config, music_dir.as_deref()) {
+                    if music_player.is_none() {
+                        match &command {
+                            music_folder::Command::Play { .. } | music_folder::Command::Pause => {
+                                smtc::send_transport(smtc::Transport::PlayPause);
+                                continue;
+                            }
+                            music_folder::Command::Next => {
+                                smtc::send_transport(smtc::Transport::Next);
+                                continue;
+                            }
+                            music_folder::Command::Previous => {
+                                smtc::send_transport(smtc::Transport::Previous);
+                                continue;
+                            }
+                            _ => {}
+                        }
+                    }
+                    if let Some(player) = start_music_player(&mut music_player, &stage, &config, music_dir.as_deref()) {
                         let _ = player.command(&command);
                     }
                 }
@@ -1513,7 +1529,8 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                             if let Some(line) = music_player_log.heard(heard) {
                                 log!("{line}");
                             }
-                            let message = music_folder::playback_message(playback.as_deref());
+                            let effective = playback.or_else(|| smtc::current_playback(false));
+                            let message = music_folder::playback_message(effective.as_deref());
                             let _ = webview.post_json(&message);
                             music_player_playback = Some(message);
                         }
@@ -1680,7 +1697,7 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
             let head = speakers::Head::of(telemetry).turned(turn);
             // The truck's speakers: a coach's driver's or its passengers' as the companion's setting chooses; its
             // parts' for a truck whose speakers come with them (none until they're found), else its own.
-            let truck_speakers = match (&coach_sets, &part_speakers) {
+            let _truck_speakers = match (&coach_sets, &part_speakers) {
                 (Some((driver, passengers)), _) => Some(match config.settings.get().sound.coach {
                     settings::CoachSpeakers::Driver => driver.as_slice(),
                     settings::CoachSpeakers::Passengers => passengers.as_slice(),
@@ -1690,22 +1707,22 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                 _ => speakers::in_truck(truck.id.as_str()),
             };
             if let Some(player) = &youtube {
-                let _ = player.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
+                let _ = player.cab(None, head, outside, distance, equalizer, spectrum);
             }
             if let Some(player) = &apple_music {
-                let _ = player.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
+                let _ = player.cab(None, head, outside, distance, equalizer, spectrum);
             }
             if let Some(player) = &youtube_music {
-                let _ = player.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
+                let _ = player.cab(None, head, outside, distance, equalizer, spectrum);
             }
             if let Some(player) = &spotify {
-                let _ = player.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
+                let _ = player.cab(None, head, outside, distance, equalizer, spectrum);
             }
             if let Some(player) = &music_player {
-                let _ = player.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
+                let _ = player.cab(None, head, outside, distance, equalizer, spectrum);
             }
             if let Some(browser) = &mut safari {
-                browser.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
+                browser.cab(None, head, outside, distance, equalizer, spectrum);
             }
         }
 

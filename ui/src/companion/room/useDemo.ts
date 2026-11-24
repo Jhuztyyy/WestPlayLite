@@ -27,7 +27,7 @@ export function useDemo(): {
   locate(target: string): Promise<Rect | null>
 } {
   const frame = useRef<HTMLIFrameElement>(null)
-  const [ready, setReady] = useState(false)
+  const [ready, setReady] = useState(true)
   const [route, setRoute] = useState('home')
   const waiting = useRef(new Map<number, (rect: Rect | null) => void>())
   const nextId = useRef(1)
