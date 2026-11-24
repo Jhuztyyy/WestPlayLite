@@ -78,7 +78,7 @@ export function Shell({ children, overlay, entering = false }: ShellProps) {
   // the apps and the screen changes' snapshots too.
   const reduceTransparency = useCabin((state) => state.reduceTransparency)
   useLayoutEffect(() => {
-    document.documentElement.classList.toggle('reduce-transparency', reduceTransparency)
+    document.documentElement.classList.toggle('reduce-transparency', true)
   }, [reduceTransparency])
   // Liquid Glass's lens and touch, for every glass surface as it comes (liquidGlass.ts).
   useEffect(() => startLiquidGlass(), [])

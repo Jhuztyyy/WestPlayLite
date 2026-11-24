@@ -38,7 +38,7 @@ export function LyricsLines({
     const line = scroller.querySelectorAll<HTMLElement>('.lyric')[Math.max(0, current)]
     if (!line) return
     const top = line.offsetTop - scroller.clientHeight * 0.3
-    scroller.scrollTo({ top: Math.max(0, top), behavior: first.current ? 'auto' : 'smooth' })
+    scroller.scrollTo({ top: Math.max(0, top), behavior: 'auto' })
     first.current = false
   }, [current, lyrics])
 
