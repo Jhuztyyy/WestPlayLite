@@ -227,7 +227,7 @@ export function Onboarding({
   }, [mapKey, demo.ready, send])
 
   // The mouse turns the screen a little.
-  const tilt = (event: React.PointerEvent) => {
+  const _tilt = (event: React.PointerEvent) => { void _tilt;
     const box = root.current?.getBoundingClientRect()
     if (!box) return
     root.current?.style.setProperty('--tilt-x', (((event.clientX - box.left) / box.width) * 2 - 1).toFixed(3))
@@ -246,7 +246,7 @@ export function Onboarding({
       lang={words.locale}
       data-power={powered || undefined}
       data-finishing={finishing || undefined}
-      onPointerMove={tilt}
+      /* Low-End Mode: tilt disabled */
     >
       <TruckScreen
         frame={demo.frame}

@@ -1,3 +1,4 @@
+import { lowEndMap, lowEndMapOptions } from './lowEndMap'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { buildingMeshes } from './buildingMeshes'
@@ -16,7 +17,7 @@ const [x, z] = (query.get('at') ?? '0,0').split(',').map(Number)
 void loadMapData().then((data) => {
   if (!data) return
   addSeaProtocol(maplibregl)
-  const map = new maplibregl.Map({
+  const map = lowEndMap(new maplibregl.Map(lowEndMapOptions({
     container: 'map',
     style: mapStyle(query.get('look') === 'light' ? 'light' : 'dark', data),
     center: [x / METRES_PER_DEGREE, -z / METRES_PER_DEGREE],
@@ -27,7 +28,7 @@ void loadMapData().then((data) => {
     attributionControl: false,
     fadeDuration: 0,
     canvasContextAttributes: { antialias: true, preserveDrawingBuffer: true },
-  })
+  })))
   if (data.raised) {
     const look = query.get('look') === 'light' ? 'light' : 'dark'
     const raised = raisedRoads(map, data.raised, () => look)

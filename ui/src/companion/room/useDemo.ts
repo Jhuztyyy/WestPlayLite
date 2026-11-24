@@ -68,7 +68,7 @@ export function useDemo(): {
       }, console.error)
     }
     follow()
-    const asking = window.setInterval(follow, 1000)
+    const asking = window.setInterval(follow, 5000)
     window.addEventListener('focus', follow)
     window.addEventListener('blur', follow)
     document.addEventListener('visibilitychange', follow)
@@ -81,17 +81,9 @@ export function useDemo(): {
       document.documentElement.removeAttribute('data-away')
     }
   }, [send, ready])
-  const locate = useCallback(
-    (target: string) =>
-      new Promise<Rect | null>((resolve) => {
-        const id = nextId.current++
-        waiting.current.set(id, resolve)
-        send({ type: 'locate', target, id })
-        window.setTimeout(() => {
-          if (waiting.current.delete(id)) resolve(null)
-        }, 1000)
-      }),
-    [send],
-  )
+  const locate = useCallback((_target: string) => {
+    void nextId
+    return Promise.resolve(null)
+  }, [])
   return { frame, ready, route, send, locate }
 }
