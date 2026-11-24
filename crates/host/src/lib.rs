@@ -1023,7 +1023,7 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                     }
                 }
                 Some(PageMessage::Player { command }) => {
-                    if music_player.is_none() {
+                    if music_player.is_none() && smtc::current_playback(false).is_some() {
                         match &command {
                             music_folder::Command::Play { .. } | music_folder::Command::Pause => {
                                 smtc::send_transport(smtc::Transport::PlayPause);

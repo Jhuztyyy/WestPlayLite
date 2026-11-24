@@ -1,15 +1,13 @@
 use std::future::IntoFuture;
 use std::pin::pin;
+use std::sync::{Mutex, OnceLock};
 use std::task::{Context, Poll, RawWaker, RawWakerVTable, Waker};
 use std::time::{Duration, Instant};
 
-use base64::Engine as _;
 use windows::Media::Control::{
-    GlobalSystemMediaTransportControlsSession,
     GlobalSystemMediaTransportControlsSessionManager,
     GlobalSystemMediaTransportControlsSessionPlaybackStatus,
 };
-use windows::Storage::Streams::{DataReader, IRandomAccessStreamWithContentType};
 
 pub enum Transport {
     PlayPause,
@@ -75,16 +73,26 @@ pub fn send_transport(cmd: Transport) {
     }
 }
 
-pub fn current_playback(music_player_active: bool) -> Option<Box<crate::music_folder::Playback>> {
-    if music_player_active {
-        return None;
-    }
+struct Snap {
+    label: String,
+    playing: bool,
+    shuffle: bool,
+}
+
+static SNAP: Mutex<Option<Snap>> = Mutex::new(None);
+static STARTED: OnceLock<()> = OnceLock::new();
+
+fn refresh() -> Option<Snap> {
     let manager = GlobalSystemMediaTransportControlsSessionManager::RequestAsync()
         .ok()
         .and_then(block_on_short)?
         .ok()?;
-    let session: GlobalSystemMediaTransportControlsSession = manager.GetCurrentSession().ok()?;
-    let props = session.TryGetMediaPropertiesAsync().ok().and_then(block_on_short)?.ok()?;
+    let session = manager.GetCurrentSession().ok()?;
+    let props = session
+        .TryGetMediaPropertiesAsync()
+        .ok()
+        .and_then(block_on_short)?
+        .ok()?;
     let info = session.GetPlaybackInfo().ok()?;
     let status = info.PlaybackStatus().ok()?;
     let playing = status == GlobalSystemMediaTransportControlsSessionPlaybackStatus::Playing;
@@ -104,31 +112,43 @@ pub fn current_playback(music_player_active: bool) -> Option<Box<crate::music_fo
         return None;
     }
 
-    let _cover_data_url = props.Thumbnail().ok().and_then(|stream_ref| {
-        let stream: IRandomAccessStreamWithContentType =
-            stream_ref.OpenReadAsync().ok().and_then(block_on_short)?.ok()?;
-        let size = stream.Size().ok()? as u32;
-        if size == 0 || size > 2_000_000 {
-            return None;
-        }
-        let input = stream.GetInputStreamAt(0).ok()?;
-        let reader = DataReader::CreateDataReader(&input).ok()?;
-        let _ = block_on_short(reader.LoadAsync(size).ok()?)?.ok()?;
-        let mut buf = vec![0u8; size as usize];
-        reader.ReadBytes(&mut buf).ok()?;
-        Some(format!(
-            "data:image/png;base64,{}",
-            base64::engine::general_purpose::STANDARD.encode(buf)
-        ))
-    });
-
-    Some(Box::new(crate::music_folder::Playback {
-        file: label,
+    Some(Snap {
+        label,
         playing,
+        shuffle: info
+            .IsShuffleActive()
+            .ok()
+            .and_then(|v| v.Value().ok())
+            .unwrap_or(false),
+    })
+}
+
+fn ensure_thread() {
+    STARTED.get_or_init(|| {
+        std::thread::spawn(|| loop {
+            let snap = refresh();
+            if let Ok(mut slot) = SNAP.lock() {
+                *slot = snap;
+            }
+            std::thread::sleep(Duration::from_millis(750));
+        });
+    });
+}
+
+pub fn current_playback(music_player_active: bool) -> Option<Box<crate::music_folder::Playback>> {
+    if music_player_active {
+        return None;
+    }
+    ensure_thread();
+    let guard = SNAP.lock().ok()?;
+    let s = guard.as_ref()?;
+    Some(Box::new(crate::music_folder::Playback {
+        file: s.label.clone(),
+        playing: s.playing,
         loading: false,
         position: 0.0,
         duration: 0.0,
-        shuffle: info.IsShuffleActive().ok().and_then(|v| v.Value().ok()).unwrap_or(false),
+        shuffle: s.shuffle,
         repeat: crate::music_folder::Repeat::Off,
         volume: None,
         index: 0,
