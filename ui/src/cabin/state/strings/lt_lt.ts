@@ -509,7 +509,6 @@ export const strings: Strings = {
     back: 'Atgal',
   },
   apps: {
-    maps: 'Žemėlapiai',
     music: 'Muzika',
     spotify: 'Spotify',
     youtube: 'YouTube',
@@ -517,10 +516,6 @@ export const strings: Strings = {
     player: 'Player',
     safari: 'Safari',
     podcasts: 'Tinklalaidės',
-    phone: 'Telefonas',
-    messages: 'Žinutės',
-    calendar: 'Kalendorius',
-    weather: 'Orai',
     settings: 'Nustatymai',
   },
   notBuiltYet: 'Ši programa dar neparengta.',

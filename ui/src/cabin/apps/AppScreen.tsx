@@ -1,9 +1,7 @@
 import { startTransition, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useAppIcon } from '../state/hooks'
-import { MapView } from '../dashboard/MapView'
 import { type AppId, APPS } from '../state/apps'
 import { useLaunchStyle, whenTransitionEnds } from '../state/launch'
-import { CalendarApp } from './calendar/CalendarApp'
 import { useLanguage, useText } from '../state/text'
 import { isCopied, noteOpened, openedBefore, saveCopy, savedCopy } from './launchCopies'
 import { MusicApp } from './music/MusicApp'
@@ -12,7 +10,6 @@ import { SafariApp } from './safari/SafariApp'
 import { SettingsApp } from './settings/SettingsApp'
 import { SpotifyApp } from './spotify/SpotifyApp'
 import { YouTubeMusicApp } from './youtubeMusic/YouTubeMusicApp'
-import { WeatherApp } from './weather/WeatherApp'
 import { YouTubeApp } from './youtube/YouTubeApp'
 import './apps.css'
 
@@ -70,14 +67,7 @@ export function AppScreen({ app }: { app: AppId }) {
 }
 
 function AppContent({ app }: { app: AppId }) {
-  const text = useText()
   switch (app) {
-    case 'maps':
-      return (
-        <section className="app-panel maps-app" aria-label={text.apps.maps}>
-          <MapView interactive />
-        </section>
-      )
     case 'music':
       return <MusicApp />
     case 'youtube':
@@ -88,10 +78,6 @@ function AppContent({ app }: { app: AppId }) {
       return <YouTubeMusicApp />
     case 'settings':
       return <SettingsApp />
-    case 'weather':
-      return <WeatherApp />
-    case 'calendar':
-      return <CalendarApp />
     case 'player':
       return <PlayerApp />
     case 'safari':

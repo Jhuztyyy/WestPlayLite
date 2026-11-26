@@ -792,7 +792,7 @@ function MapStep({ status, next, back }: { status: HostStatus | null; next(): vo
     ...new Intl.Segmenter(words.locale, { granularity: 'sentence' }).segment(hvtMapMessage(code)),
   ].map((part) => part.segment.trim())
   useScreenAt(
-    'maps',
+    'dashboard',
     GLOW.maps,
     map.state === 'building'
       ? {
@@ -870,7 +870,7 @@ function Speed({ settings, next, back }: { settings: SettingsState; next(): void
   const w = words.speed
   const cw = companionWords(code).map
   const [read, setRead] = useState(false)
-  useScreenAt('maps', GLOW.maps, null)
+  useScreenAt('dashboard', GLOW.maps, null)
   return (
     <Panel
       place="side"
@@ -912,8 +912,6 @@ function Controls({ settings, next, back }: { settings: SettingsState; next(): v
   // Holding the key: the player taps one app, then another.
   useTour([
     ...openAndClose('music', GLOW.music),
-    ...openAndClose('weather', GLOW.weather),
-    ...openAndClose('maps', GLOW.maps),
   ])
   return (
     <Panel

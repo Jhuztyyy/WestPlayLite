@@ -40,7 +40,7 @@ export function MapPage(props: PageProps) {
   ].map((part) => part.segment.trim())
 
   useScreenAt(
-    'maps',
+    'dashboard',
     GLOW.maps,
     building
       ? {

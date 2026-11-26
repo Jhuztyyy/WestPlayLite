@@ -912,7 +912,7 @@
 }
 
 .shell .am-bars.playing i {
-  animation: am-bar 900ms ease-in-out infinite alternate;
+  animation: none; /* WestPlay Lite: no looping decoration */
 }
 
 .shell .am-bars.playing i:nth-child(2) {
@@ -1884,7 +1884,7 @@
 /* Waiting for the song's sound (loading, buffering): the bar breathes, its time held. */
 .shell .am-slider.am-time.loading,
 .shell .am-mini-time.loading {
-  animation: am-breathe 1.6s ease-in-out infinite alternate;
+  animation: none; /* WestPlay Lite: no looping decoration */
 }
 
 /* The mini player's line has no track of its own: waiting, the whole line breathes, faint. */

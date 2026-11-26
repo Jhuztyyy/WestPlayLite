@@ -498,7 +498,6 @@ export const strings: Strings = {
     back: 'Zpět',
   },
   apps: {
-    maps: 'Mapy',
     music: 'Hudba',
     spotify: 'Spotify',
     youtube: 'YouTube',
@@ -506,10 +505,6 @@ export const strings: Strings = {
     player: 'Player',
     safari: 'Safari',
     podcasts: 'Podcasty',
-    phone: 'Telefon',
-    messages: 'Zprávy',
-    calendar: 'Kalendář',
-    weather: 'Počasí',
     settings: 'Nastavení',
   },
   notBuiltYet: 'Tato aplikace ještě není hotová.',

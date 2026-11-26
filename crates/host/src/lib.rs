@@ -613,10 +613,16 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
             // The cab on another GPU than it's drawn on (the game's, or the player's choice): WebView2 is
             // started again on it.
             let cab_wanted = graphics::choose(chosen_gpu.as_deref(), wanted, cab_gpu, &adapters);
-            if let (Some(now), Some(next)) = (cab_gpu, cab_wanted)
-                && !graphics::same(now, next)
-            {
-                let name = graphics::name_of(next, &adapters).unwrap_or_default();
+            // Automatic (`None`) leaves WebView2 on its default GPU, so a change to or from a chosen GPU counts.
+            let cab_moves = match (cab_gpu, cab_wanted) {
+                (Some(now), Some(next)) => !graphics::same(now, next),
+                (None, None) => false,
+                _ => true,
+            };
+            if cab_moves {
+                let name = cab_wanted
+                    .and_then(|luid| graphics::name_of(luid, &adapters))
+                    .unwrap_or_else(|| "Windows' default GPU".to_string());
                 log!("the cab moves to {name}");
                 gpu_changed = true;
                 break;
@@ -1697,7 +1703,7 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
             let head = speakers::Head::of(telemetry).turned(turn);
             // The truck's speakers: a coach's driver's or its passengers' as the companion's setting chooses; its
             // parts' for a truck whose speakers come with them (none until they're found), else its own.
-            let _truck_speakers = match (&coach_sets, &part_speakers) {
+            let truck_speakers_all = match (&coach_sets, &part_speakers) {
                 (Some((driver, passengers)), _) => Some(match config.settings.get().sound.coach {
                     settings::CoachSpeakers::Driver => driver.as_slice(),
                     settings::CoachSpeakers::Passengers => passengers.as_slice(),
@@ -1706,23 +1712,25 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                 _ if speakers::by_parts(truck.id.as_str()) => None,
                 _ => speakers::in_truck(truck.id.as_str()),
             };
+            // WestPlay Lite: positioning the sound on the truck's speakers is the companion's "Truck speakers" switch.
+            let truck_speakers = if config.settings.get().sound.cab_speakers { truck_speakers_all } else { None };
             if let Some(player) = &youtube {
-                let _ = player.cab(None, head, outside, distance, equalizer, spectrum);
+                let _ = player.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
             }
             if let Some(player) = &apple_music {
-                let _ = player.cab(None, head, outside, distance, equalizer, spectrum);
+                let _ = player.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
             }
             if let Some(player) = &youtube_music {
-                let _ = player.cab(None, head, outside, distance, equalizer, spectrum);
+                let _ = player.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
             }
             if let Some(player) = &spotify {
-                let _ = player.cab(None, head, outside, distance, equalizer, spectrum);
+                let _ = player.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
             }
             if let Some(player) = &music_player {
-                let _ = player.cab(None, head, outside, distance, equalizer, spectrum);
+                let _ = player.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
             }
             if let Some(browser) = &mut safari {
-                browser.cab(None, head, outside, distance, equalizer, spectrum);
+                browser.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
             }
         }
 

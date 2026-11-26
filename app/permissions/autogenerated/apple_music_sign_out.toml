@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-apple-music-sign-out"
+description = "Enables the apple_music_sign_out command without any pre-configured scope."
+commands.allow = ["apple_music_sign_out"]
+
+[[permission]]
+identifier = "deny-apple-music-sign-out"
+description = "Denies the apple_music_sign_out command without any pre-configured scope."
+commands.deny = ["apple_music_sign_out"]

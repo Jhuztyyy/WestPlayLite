@@ -94,6 +94,8 @@ export function ScreenPage({ status, settings, setup, cw }: PageProps) {
         </Note>
       )}
       <GpuChooser status={status} settings={settings} cw={cw} />
+      <CabSpeakersSwitch settings={settings} />
+      <GameFirstSwitch settings={settings} />
       <CoachChooser status={status} settings={settings} cw={cw} />
       {status?.error && <Note tone="bad">{status.error}</Note>}
     </Panel>
@@ -113,7 +115,7 @@ function GpuChooser({ status, settings: state, cw }: Pick<PageProps, 'status' | 
   if (!settings || adapters.length < 2) return null
   const chosen = adapters.some((adapter) => adapter.id === settings.graphics.gpu) ? settings.graphics.gpu : null
   const choose = (gpu: string | null) => {
-    if (gpu !== settings.graphics.gpu) void update({ ...settings, graphics: { gpu } })
+    if (gpu !== settings.graphics.gpu) void update({ ...settings, graphics: { ...settings.graphics, gpu } })
   }
   return (
     <>
@@ -135,6 +137,62 @@ function GpuChooser({ status, settings: state, cw }: Pick<PageProps, 'status' | 
         ))}
       </Group>
       <Note tone="calm">{w.gpuNote}</Note>
+    </>
+  )
+}
+
+/**
+ * WestPlay Lite: whether the music and videos are positioned on the truck's own speakers (3D sound in the cab).
+ * Off keeps the sound plain and the processor free while driving. English only, as the Lite additions are.
+ */
+function CabSpeakersSwitch({ settings: state }: Pick<PageProps, 'settings'>) {
+  const { settings, update } = state
+  if (!settings) return null
+  const on = settings.sound.cabSpeakers
+  return (
+    <>
+      <Group place={7}>
+        <Row
+          title="Truck speakers"
+          detail="Play sound through the truck’s own speakers"
+          accessory={
+            <Switch
+              on={on}
+              label="Truck speakers"
+              change={(next) => void update({ ...settings, sound: { ...settings.sound, cabSpeakers: next } })}
+            />
+          }
+        />
+      </Group>
+      <Note tone="calm">Off is lighter on the processor while driving; on places the sound in the cab as the game does.</Note>
+    </>
+  )
+}
+
+/**
+ * WestPlay Lite: WestPlay at a lower Windows priority than the game, so the game keeps its frame rate when it
+ * streams the map or saves, at the price of the truck screen catching up a little later then. English only.
+ */
+function GameFirstSwitch({ settings: state }: Pick<PageProps, 'settings'>) {
+  const { settings, update } = state
+  if (!settings) return null
+  const on = settings.graphics.gameFirst
+  return (
+    <>
+      <Group place={8}>
+        <Row
+          title="Game first"
+          detail="Keep the game smooth while the map streams and it saves"
+          accessory={
+            <Switch
+              on={on}
+              label="Game first"
+              change={(next) => void update({ ...settings, graphics: { ...settings.graphics, gameFirst: next } })}
+            />
+          }
+        />
+      </Group>
+      <Note tone="calm">Runs WestPlay below the game in Windows. Takes full effect the next time WestPlay starts.</Note>
     </>
   )
 }

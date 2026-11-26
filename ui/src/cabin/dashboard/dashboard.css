@@ -399,3 +399,17 @@
     height: 22px;
   }
 }
+
+
+/* WestPlay Lite: no map, so the column of widgets sits centred and keeps its own size (no growing, no sliding). */
+.screen.dashboard-lite {
+  justify-content: center;
+}
+
+.screen.dashboard-lite .widgets {
+  position: relative;
+  inset: auto;
+  width: min(560px, 100%);
+  transition: none;
+  transform: none;
+}

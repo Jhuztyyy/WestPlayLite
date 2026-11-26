@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-look-for-update"
+description = "Enables the look_for_update command without any pre-configured scope."
+commands.allow = ["look_for_update"]
+
+[[permission]]
+identifier = "deny-look-for-update"
+description = "Denies the look_for_update command without any pre-configured scope."
+commands.deny = ["look_for_update"]

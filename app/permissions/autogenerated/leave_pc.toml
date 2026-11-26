@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-leave-pc"
+description = "Enables the leave_pc command without any pre-configured scope."
+commands.allow = ["leave_pc"]
+
+[[permission]]
+identifier = "deny-leave-pc"
+description = "Denies the leave_pc command without any pre-configured scope."
+commands.deny = ["leave_pc"]

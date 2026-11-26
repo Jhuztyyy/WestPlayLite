@@ -82,8 +82,8 @@ let settings: Settings = {
   },
   screen: { truckStrip: 'auto' },
   look: { wallpaper: null, iconSet: null, iconStyle: 'auto' },
-  graphics: { gpu: null },
-  sound: { equalizer: { bass: 0, mid: 0, treble: 0 }, custom: false, coach: 'driver' },
+  graphics: { gpu: null, gameFirst: false },
+  sound: { equalizer: { bass: 0, mid: 0, treble: 0 }, custom: false, coach: 'driver', cabSpeakers: false },
   map: { buildings: true, roads: true, fast: false },
   language: null,
 }

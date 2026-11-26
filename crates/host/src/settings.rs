@@ -100,6 +100,10 @@ pub struct SoundSettings {
     /// Which of a coach's speakers play (the companion's Truck Screen page).
     #[serde(deserialize_with = "lenient")]
     pub coach: CoachSpeakers,
+    /// Positions the players' sound on the truck's own speakers (3D audio in the cab). Off by default in
+    /// WestPlay Lite: it costs processor time while driving.
+    #[serde(deserialize_with = "lenient")]
+    pub cab_speakers: bool,
 }
 
 /// Which of a coach's speakers play (owner 2026-11-13: a setting of the companion's, not the cab's, as real coaches
@@ -128,6 +132,10 @@ impl SoundSettings {
 pub struct GraphicsSettings {
     #[serde(deserialize_with = "lenient")]
     pub gpu: Option<String>,
+    /// WestPlay Lite: WestPlay runs at a lower Windows priority than the game (`graphics::set_game_first`), so the
+    /// game keeps its frame rate when it streams the map or saves. Off by default.
+    #[serde(deserialize_with = "lenient")]
+    pub game_first: bool,
 }
 
 /// How the screen looks: its wallpaper (chosen in the cab's Settings or the companion's Customize) and its
@@ -526,11 +534,12 @@ mod tests {
                 icon_set: Some("Retro".into()),
                 icon_style: IconStyle::Dark,
             },
-            graphics: GraphicsSettings { gpu: Some("10de:2702:00000000:161".into()) },
+            graphics: GraphicsSettings { gpu: Some("10de:2702:00000000:161".into()), game_first: true },
             sound: SoundSettings {
                 equalizer: crate::speakers::Equalizer { bass: -3, mid: 1, treble: 2 },
                 custom: true,
                 coach: CoachSpeakers::Passengers,
+                cab_speakers: true,
             },
             map: MapSettings { buildings: false, roads: false, fast: true },
             language: LanguageCode::new("pt_br"),

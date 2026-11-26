@@ -481,7 +481,6 @@ export const strings: Strings = {
     back: '返回',
   },
   apps: {
-    maps: '地图',
     music: '音乐',
     spotify: 'Spotify',
     youtube: 'YouTube',
@@ -489,10 +488,6 @@ export const strings: Strings = {
     player: 'Player',
     safari: 'Safari',
     podcasts: '播客',
-    phone: '电话',
-    messages: '信息',
-    calendar: '日历',
-    weather: '天气',
     settings: '设置',
   },
   notBuiltYet: '此 App 尚未准备就绪。',

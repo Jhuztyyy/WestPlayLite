@@ -3,80 +3,79 @@ $RepoRoot = "C:\Users\jhuzt\WestPlayLite"
 if (-not (Test-Path $RepoRoot)) {
     throw "Repository not found at $RepoRoot"
 }
-
 Set-Location $RepoRoot
 $env:PATH = "$env:USERPROFILE\.cargo\bin;$env:PATH"
 
-Write-Host "=== 1. Fixing Companion / Setup CSS Layout ===" -ForegroundColor Cyan
-$marker = "/* === WESTPLAYLITE LOW-END SETUP & COMPANION CSS === */"
-Get-ChildItem "ui\src\companion" -Recurse -Filter "*.css" -ErrorAction SilentlyContinue | ForEach-Object {
+Write-Host "=== 1. Removing old Low-End CSS overrides (they broke the companion layout) ===" -ForegroundColor Cyan
+$markers = @(
+    "/* === WESTPLAYLITE LOW-END SETUP & COMPANION CSS === */",
+    "/* === WESTPLAYLITE LOW-END GPU OVERRIDES === */"
+)
+Get-ChildItem "ui\src\companion" -Recurse -Filter "*.css" | ForEach-Object {
     $css = Get-Content $_.FullName -Raw
-    $idx = $css.IndexOf($marker)
-    $baseCss = if ($idx -ge 0) { $css.Substring(0, $idx).TrimEnd() } else { $css.TrimEnd() }
-
-    $cleanOverride = @"
-
-
-$marker
-.ob, .ob *, .ts, .ts * {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  animation: none !important;
-  transition: none !important;
-  box-shadow: none !important;
-  text-shadow: none !important;
-}
-.ts-light, .ts-scan, .ts-cursor {
-  display: none !important;
-}
-.ts-tilt {
-  transform: none !important;
-}
-.ts, .ts-bezel, .ts-glass, .ts-frame {
-  perspective: none !important;
-  filter: none !important;
-  will-change: auto !important;
-}
-"@
-    Set-Content -Path $_.FullName -Value ($baseCss + $cleanOverride) -NoNewline -Encoding UTF8
-    Write-Host "  [CSS OK] $($_.Name)" -ForegroundColor Green
+    $cuts = @()
+    foreach ($m in $markers) {
+        $i = $css.IndexOf($m)
+        if ($i -ge 0) { $cuts += $i }
+    }
+    if ($cuts.Count -gt 0) {
+        $idx = ($cuts | Measure-Object -Minimum).Minimum
+        Set-Content -Path $_.FullName -Value $css.Substring(0, $idx).TrimEnd() -NoNewline -Encoding UTF8
+        Write-Host "  [CSS cleaned] $($_.Name)" -ForegroundColor Yellow
+    }
 }
 
-Write-Host "`n=== 2. Disabling Upstream Auto-Updater ===" -ForegroundColor Cyan
-$updateTsPath = "ui\src\companion\update.ts"
-if (Test-Path $updateTsPath) {
-    $disabledUpdateTs = @'
-import { useEffect, useState } from 'react'
+Write-Host ""
+Write-Host "=== 2. Closing running WestPlay / WebView2 processes ===" -ForegroundColor Cyan
+Get-Process -Name "westplay", "msedgewebview2" -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Sleep -Milliseconds 500
 
-export interface Offer {
-  version: string
-  notes: string
-  date: string | null
+Write-Host ""
+Write-Host "=== 3. Building release UI and the whole workspace ===" -ForegroundColor Cyan
+npm --prefix ui run build:release
+if ($LASTEXITCODE -ne 0) { throw "UI build failed." }
+cargo build --release --workspace
+if ($LASTEXITCODE -ne 0) { throw "Workspace cargo build failed." }
+
+Write-Host ""
+Write-Host "=== 4. Staging plugin DLLs and helper binaries ===" -ForegroundColor Cyan
+$releaseDir = Join-Path $RepoRoot "target\release"
+$stageDir = Join-Path $releaseDir "westplaylite_res"
+if (Test-Path $stageDir) { Remove-Item $stageDir -Recurse -Force }
+New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
+$staged = @()
+Get-ChildItem $releaseDir -Filter "*.dll" -File -ErrorAction SilentlyContinue | ForEach-Object {
+    Copy-Item $_.FullName -Destination (Join-Path $stageDir $_.Name) -Force
+    $staged += $_.Name
+}
+Get-ChildItem $releaseDir -Filter "westplay-*.exe" -File -ErrorAction SilentlyContinue | ForEach-Object {
+    Copy-Item $_.FullName -Destination (Join-Path $stageDir $_.Name) -Force
+    $staged += $_.Name
+}
+if ($staged.Count -gt 0) {
+    Write-Host "  [Staged] $($staged -join ', ')" -ForegroundColor Green
+} else {
+    Write-Warning "No .dll or westplay-*.exe files found in target\release."
 }
 
-export interface Progress {
-  done: number
-  total: number | null
-}
+Write-Host ""
+Write-Host "=== 5. Building the NSIS installer (*-setup.exe) ===" -ForegroundColor Cyan
+# Windows PowerShell drops the quotes of a JSON argument, so the override goes through a file (paths are
+# relative to app\, where tauri.conf.json lives).
+$overrideFile = Join-Path $RepoRoot "app\tauri.lite-override.json"
+$override = '{"bundle":{"active":true,"resources":{"../ui/dist/":"ui/","../target/release/westplaylite_res/":"./"}}}'
+[System.IO.File]::WriteAllText($overrideFile, $override, (New-Object System.Text.UTF8Encoding($false)))
+npx @tauri-apps/cli@2 build --bundles nsis --config $overrideFile
+$tauriExit = $LASTEXITCODE
+Remove-Item $overrideFile -Force -ErrorAction SilentlyContinue
+if ($tauriExit -ne 0) { throw "Tauri NSIS build failed." }
 
-export function useUpdateOffer(): Offer | null {
-  const [offer] = useState<Offer | null>(null)
-  useEffect(() => {}, [])
-  return offer
-}
-
-export function lookForUpdate(): Promise<Offer | null> {
-  return Promise.resolve(null)
-}
-
-export function installUpdate(): Promise<void> {
-  return Promise.resolve()
-}
-
-export function onUpdateProgress(_handler: (progress: Progress) => void): () => void {
-  return () => {}
-}
-
-export function noteLines(_notes: string): string[] {
-  return []
+$nsisDir = Join-Path $RepoRoot "target\release\bundle\nsis"
+$setupExe = Get-ChildItem $nsisDir -Filter "*-setup.exe" -File -ErrorAction SilentlyContinue | Select-Object -First 1
+Write-Host ""
+if ($setupExe) {
+    Write-Host "[DONE] Installer: $($setupExe.FullName)" -ForegroundColor Green
+    explorer.exe $nsisDir
+} else {
+    Write-Warning "Build finished, but no installer found in $nsisDir"
 }
