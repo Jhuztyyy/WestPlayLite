@@ -1,3 +1,14 @@
+# WestPlayLite (`low-end-mode`)
+
+A lightweight, low-overhead fork of [enes-less/WestPlay](https://github.com/enes-less/WestPlay) (`v2.4.1`) tuned for lower-end PCs and laptops running **Euro Truck Simulator 2** and **American Truck Simulator**.
+
+### Low-End Mode Highlights
+- **Lower CPU, RAM & GPU Overhead:** Tuned for integrated graphics and entry-level GPUs by reducing WebView2 rendering load, animation cost, and background polling.
+- **Streamlined In-Cabin Experience:** Keeps the core CarPlay-style dashboard screen, truck brand boot sequence, companion app setup, and 3D cab speaker acoustics without heavy background map/widget overhead.
+- **Full Media Playback Support:** Retains Spotify, YouTube, YouTube Music, Apple Music, and local music folder playback.
+- **Upstream Baseline:** Built directly on WestPlay `v2.4.1` (`GPL-3.0-or-later`).
+
+---
 <p align="center"><img src="ui/public/westplay.png" width="112" alt="WestPlay"></p>
 
 <h1 align="center">WestPlay</h1>
