@@ -120,8 +120,7 @@ export const useYouTube = create<YouTubeStore>()(
       upNext: null,
       queue: null,
       captions: null,
-      // WestPlay Lite: 480p until the player picks otherwise (decoding and drawing 1080p is what lags a weak PC).
-      quality: 'large',
+      quality: 'auto',
       rate: 1,
       searches: [],
       watched: [],
@@ -155,7 +154,7 @@ export const useYouTube = create<YouTubeStore>()(
           account: keptAccount(account) ?? current.account,
           captions: typeof captions === 'string' && /^[\w.-]{1,64}$/.test(captions) ? captions : null,
           quality:
-            typeof quality === 'string' && (quality === 'auto' || QUALITIES.includes(quality)) ? quality : 'large',
+            typeof quality === 'string' && (quality === 'auto' || QUALITIES.includes(quality)) ? quality : 'auto',
           volume: typeof volume === 'number' && volume >= 0 && volume <= 100 ? Math.round(volume) : 100,
           muted: muted === true,
           searches: Array.isArray(searches)

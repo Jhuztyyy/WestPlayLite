@@ -505,6 +505,7 @@ export const strings: Strings = {
     back: 'Takaisin',
   },
   apps: {
+    maps: 'Kartat',
     music: 'Musiikki',
     spotify: 'Spotify',
     youtube: 'YouTube',
@@ -512,6 +513,10 @@ export const strings: Strings = {
     player: 'Player',
     safari: 'Safari',
     podcasts: 'Podcastit',
+    phone: 'Puhelin',
+    messages: 'Viestit',
+    calendar: 'Kalenteri',
+    weather: 'Sää',
     settings: 'Asetukset',
   },
   notBuiltYet: 'Tämä appi ei ole vielä valmis.',

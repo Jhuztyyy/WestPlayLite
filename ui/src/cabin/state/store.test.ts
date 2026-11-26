@@ -22,24 +22,24 @@ describe('the saved Settings choices', () => {
     vi.stubGlobal(
       'localStorage',
       savedStorage({
-        dashboardWidgets: { nowPlaying: false, destination: true },
+        dashboardWidgets: { nowPlaying: false, destination: true, weather: false },
         albumArt: false,
         hours24: false,
       }),
     )
     const { useCabin } = await import('./store')
     expect(useCabin.getState().hours24).toBe(false)
-    expect(useCabin.getState().dashboardWidgets).toEqual({ nowPlaying: false, destination: true })
+    expect(useCabin.getState().dashboardWidgets).toEqual({ nowPlaying: false, destination: true, weather: false })
     expect(useCabin.getState().albumArt).toBe(false)
   })
 
   it('keep a widget shown unless it was turned off, and ignore what isn’t a choice', async () => {
     vi.stubGlobal(
       'localStorage',
-      savedStorage({ dashboardWidgets: { nowPlaying: 'no' }, albumArt: 'off' }),
+      savedStorage({ dashboardWidgets: { weather: false, nowPlaying: 'no' }, albumArt: 'off' }),
     )
     const { useCabin } = await import('./store')
-    expect(useCabin.getState().dashboardWidgets).toEqual({ nowPlaying: true, destination: true })
+    expect(useCabin.getState().dashboardWidgets).toEqual({ nowPlaying: true, destination: true, weather: false })
     expect(useCabin.getState().albumArt).toBe(true)
   })
 
@@ -56,7 +56,7 @@ describe('the saved Settings choices', () => {
   it('are all on when nothing was saved (an earlier WestPlay)', async () => {
     vi.stubGlobal('localStorage', savedStorage({ appearanceMode: 'dark' }))
     const { useCabin } = await import('./store')
-    expect(useCabin.getState().dashboardWidgets).toEqual({ nowPlaying: true, destination: true })
+    expect(useCabin.getState().dashboardWidgets).toEqual({ nowPlaying: true, destination: true, weather: true })
     expect(useCabin.getState().albumArt).toBe(true)
     expect(useCabin.getState().hours24).toBe(true)
     expect(useCabin.getState().appearanceMode).toBe('dark')

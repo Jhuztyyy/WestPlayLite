@@ -951,7 +951,7 @@
 }
 
 .spotify-app .sp-eq.playing i {
-  animation: none; /* WestPlay Lite: no looping decoration */
+  animation: sp-eq 0.9s ease-in-out infinite alternate;
 }
 
 .spotify-app .sp-eq.playing i:nth-child(2) {
@@ -2069,7 +2069,7 @@
 /* What's still coming: its shapes, grey, breathing together (parts.tsx's skeletons). */
 .spotify-app .sp-skeleton {
   pointer-events: none;
-  animation: none; /* WestPlay Lite: no looping decoration */
+  animation: sp-skeleton 1.4s ease-in-out infinite alternate;
 }
 
 .spotify-app .sp-skel,
@@ -2212,7 +2212,7 @@
 
 /* Asked: the card breathes until the words come. */
 .spotify-app .sp-lyrics-wait {
-  animation: none; /* WestPlay Lite: no looping decoration */
+  animation: sp-lyrics-breathe 1.4s ease-in-out infinite alternate;
   background: rgb(255 255 255 / 0.06);
 }
 

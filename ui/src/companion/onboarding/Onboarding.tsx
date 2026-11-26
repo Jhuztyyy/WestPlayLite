@@ -227,7 +227,7 @@ export function Onboarding({
   }, [mapKey, demo.ready, send])
 
   // The mouse turns the screen a little.
-  const _tilt = (event: React.PointerEvent) => { void _tilt;
+  const tilt = (event: React.PointerEvent) => {
     const box = root.current?.getBoundingClientRect()
     if (!box) return
     root.current?.style.setProperty('--tilt-x', (((event.clientX - box.left) / box.width) * 2 - 1).toFixed(3))
@@ -246,7 +246,7 @@ export function Onboarding({
       lang={words.locale}
       data-power={powered || undefined}
       data-finishing={finishing || undefined}
-      /* Low-End Mode: tilt disabled */
+      onPointerMove={tilt}
     >
       <TruckScreen
         frame={demo.frame}
@@ -792,7 +792,7 @@ function MapStep({ status, next, back }: { status: HostStatus | null; next(): vo
     ...new Intl.Segmenter(words.locale, { granularity: 'sentence' }).segment(hvtMapMessage(code)),
   ].map((part) => part.segment.trim())
   useScreenAt(
-    'dashboard',
+    'maps',
     GLOW.maps,
     map.state === 'building'
       ? {
@@ -870,7 +870,7 @@ function Speed({ settings, next, back }: { settings: SettingsState; next(): void
   const w = words.speed
   const cw = companionWords(code).map
   const [read, setRead] = useState(false)
-  useScreenAt('dashboard', GLOW.maps, null)
+  useScreenAt('maps', GLOW.maps, null)
   return (
     <Panel
       place="side"
@@ -912,6 +912,8 @@ function Controls({ settings, next, back }: { settings: SettingsState; next(): v
   // Holding the key: the player taps one app, then another.
   useTour([
     ...openAndClose('music', GLOW.music),
+    ...openAndClose('weather', GLOW.weather),
+    ...openAndClose('maps', GLOW.maps),
   ])
   return (
     <Panel

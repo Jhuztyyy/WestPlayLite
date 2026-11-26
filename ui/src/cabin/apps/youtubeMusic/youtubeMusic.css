@@ -597,7 +597,7 @@
 
 .shell .ytm-row-playing.playing .ytm-eq-bar,
 .shell .ytm-row.now .ytm-row-number .ytm-eq-bar {
-  animation: none; /* WestPlay Lite: no looping decoration */
+  animation: ytm-eq 0.9s ease-in-out infinite alternate;
 }
 
 .shell .ytm-eq-bar:nth-child(2) {
@@ -930,7 +930,7 @@
 /* Shapes of what's still coming, breathing; and Failed. */
 .shell .ytm-skeletons {
   pointer-events: none;
-  animation: none; /* WestPlay Lite: no looping decoration */
+  animation: ytm-breathe 1.4s ease-in-out infinite alternate;
 }
 
 .shell .ytm-skeleton-block {
@@ -1012,7 +1012,7 @@
 }
 
 .shell .ytm-mini-line.loading span {
-  animation: none; /* WestPlay Lite: no looping decoration */
+  animation: ytm-breathe 0.9s ease-in-out infinite alternate;
 }
 
 .shell .ytm-mini-cover.ytm-cover {
@@ -1410,7 +1410,7 @@
 /* Waiting for the song's sound: its time held, the bar breathing. */
 .shell .ytm-slider.loading .ytm-slider-fill,
 .shell .ytm-slider.loading .ytm-slider-track {
-  animation: none; /* WestPlay Lite: no looping decoration */
+  animation: ytm-breathe 0.9s ease-in-out infinite alternate;
 }
 
 .shell .ytm-times {
@@ -1678,7 +1678,7 @@
   margin: 16px var(--ytm-gutter);
   border-radius: 12px;
   background: var(--ytm-faint);
-  animation: none; /* WestPlay Lite: no looping decoration */
+  animation: ytm-breathe 1.4s ease-in-out infinite alternate;
 }
 
 /* --- A song's ⋮: its choices in a sheet rising over the app ------------------------------------------------------ */

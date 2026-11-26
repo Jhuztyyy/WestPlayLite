@@ -27,7 +27,7 @@ export function useDemo(): {
   locate(target: string): Promise<Rect | null>
 } {
   const frame = useRef<HTMLIFrameElement>(null)
-  const [ready, setReady] = useState(true)
+  const [ready, setReady] = useState(false)
   const [route, setRoute] = useState('home')
   const waiting = useRef(new Map<number, (rect: Rect | null) => void>())
   const nextId = useRef(1)
@@ -68,7 +68,7 @@ export function useDemo(): {
       }, console.error)
     }
     follow()
-    const asking = window.setInterval(follow, 5000)
+    const asking = window.setInterval(follow, 1000)
     window.addEventListener('focus', follow)
     window.addEventListener('blur', follow)
     document.addEventListener('visibilitychange', follow)
@@ -81,9 +81,17 @@ export function useDemo(): {
       document.documentElement.removeAttribute('data-away')
     }
   }, [send, ready])
-  const locate = useCallback((_target: string) => {
-    void nextId
-    return Promise.resolve(null)
-  }, [])
+  const locate = useCallback(
+    (target: string) =>
+      new Promise<Rect | null>((resolve) => {
+        const id = nextId.current++
+        waiting.current.set(id, resolve)
+        send({ type: 'locate', target, id })
+        window.setTimeout(() => {
+          if (waiting.current.delete(id)) resolve(null)
+        }, 1000)
+      }),
+    [send],
+  )
   return { frame, ready, route, send, locate }
 }

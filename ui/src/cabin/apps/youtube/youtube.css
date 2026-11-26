@@ -414,7 +414,7 @@
 /* Videos still coming: their cards' and rows' shapes, grey, breathing together. */
 .yt-skeleton {
   pointer-events: none;
-  animation: none; /* WestPlay Lite: no looping decoration */
+  animation: yt-skeleton 1.4s ease-in-out infinite alternate;
 }
 
 .yt-skeleton .yt-thumb,

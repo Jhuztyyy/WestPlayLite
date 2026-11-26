@@ -39,7 +39,7 @@ use crate::cursor::{Look, Painter, Placement};
 use crate::gpu::{Gpu, Lock, SharedFrame};
 
 /// Frames per second published to the game. Chromium renders at the monitor's refresh rate.
-pub const MAX_FPS: u32 = 15;
+pub const MAX_FPS: u32 = 60;
 const FRAME_INTERVAL: Duration = Duration::from_micros(1_000_000 / MAX_FPS as u64);
 /// Tolerance for capture timing jitter.
 const FRAME_JITTER: Duration = Duration::from_micros(1_500);
@@ -47,7 +47,7 @@ const FRAME_JITTER: Duration = Duration::from_micros(1_500);
 const POOL_FRAMES: i32 = 3;
 /// How soon the cursor's frame may go out again after the last, as it moves or changes between the page's frames
 /// (as often as a fast game takes frames, and its fades smoothly).
-const CURSOR_INTERVAL: Duration = Duration::from_millis(33);
+const CURSOR_INTERVAL: Duration = Duration::from_millis(6);
 
 pub struct Capture {
     pool: Direct3D11CaptureFramePool,

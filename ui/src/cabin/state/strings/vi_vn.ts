@@ -481,6 +481,7 @@ export const strings: Strings = {
     back: 'Quay lại',
   },
   apps: {
+    maps: 'Bản đồ',
     music: 'Nhạc',
     spotify: 'Spotify',
     youtube: 'YouTube',
@@ -488,6 +489,10 @@ export const strings: Strings = {
     player: 'Player',
     safari: 'Safari',
     podcasts: 'Podcast',
+    phone: 'Điện thoại',
+    messages: 'Tin nhắn',
+    calendar: 'Lịch',
+    weather: 'Thời tiết',
     settings: 'Cài đặt',
   },
   notBuiltYet: 'Ứng dụng này chưa sẵn sàng.',

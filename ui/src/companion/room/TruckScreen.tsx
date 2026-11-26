@@ -20,7 +20,7 @@ export interface Banner {
  * its glass whatever the step adds: a banner, the light of a scan, a cursor.
  */
 export function TruckScreen({
-  frame: _frame,
+  frame,
   ready,
   pose,
   glow,
@@ -46,20 +46,13 @@ export function TruckScreen({
         <div className="ts-bezel">
           <div className="ts-glass">
             <div className="ts-frame">
-              {/* Low-End Mode: skip duplicate live cabin iframe in companion window */}
-              <div
+              <iframe
+                ref={frame}
+                src="/cabin.html?demo&power"
+                title="WestPlay"
+                tabIndex={-1}
                 data-ready={ready || undefined}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  background: '#0b0d12',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                <img src="/westplay.png" alt="WestPlay" style={{ width: 64, height: 64, opacity: 0.85 }} />
-              </div>
+              />
               {scanning && <div className="ts-scan" />}
               <BannerView banner={banner} />
               {children}

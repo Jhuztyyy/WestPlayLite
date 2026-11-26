@@ -497,6 +497,7 @@ export const strings: Strings = {
     back: 'Atzera',
   },
   apps: {
+    maps: 'Mapak',
     music: 'Musika',
     spotify: 'Spotify',
     youtube: 'YouTube',
@@ -504,6 +505,10 @@ export const strings: Strings = {
     player: 'Player',
     safari: 'Safari',
     podcasts: 'Podcastak',
+    phone: 'Telefonoa',
+    messages: 'Mezuak',
+    calendar: 'Egutegia',
+    weather: 'Eguraldia',
     settings: 'Ezarpenak',
   },
   notBuiltYet: 'Aplikazio hau ez dago prest oraindik.',

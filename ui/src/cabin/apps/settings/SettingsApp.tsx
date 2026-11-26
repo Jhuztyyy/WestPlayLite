@@ -504,14 +504,18 @@ function WallpaperThumbnail({ src }: { src: string }) {
 /** Twice a thumbnail's width on the screen, so it stays sharp. */
 const THUMBNAIL_WIDTH = 600
 
-/** Which widgets the Dashboard shows (turn-by-turn always does while there's a route). */
+/** Which widgets the Dashboard shows (turn-by-turn always does while there's a route), and whether its map fills
+ * it while driving (dashboard/idle.ts). */
 function DashboardPage() {
   const text = useText()
   const widgets = useCabin((state) => state.dashboardWidgets)
   const setWidget = useCabin((state) => state.setDashboardWidget)
+  const mapGrows = useCabin((state) => state.mapGrows)
+  const setMapGrows = useCabin((state) => state.setMapGrows)
   const names: Record<DashboardWidget, string> = {
     nowPlaying: text.nowPlaying,
     destination: text.destination,
+    weather: text.apps.weather,
   }
   return (
     <Page title={text.settings.dashboard}>
@@ -519,6 +523,9 @@ function DashboardPage() {
         {DASHBOARD_WIDGETS.map((widget) => (
           <SwitchRow key={widget} label={names[widget]} on={widgets[widget]} onToggle={(on) => setWidget(widget, on)} />
         ))}
+      </Group>
+      <Group footer={text.settings.mapWhileDrivingFooter}>
+        <SwitchRow label={text.settings.mapWhileDriving} on={mapGrows} onToggle={setMapGrows} />
       </Group>
     </Page>
   )

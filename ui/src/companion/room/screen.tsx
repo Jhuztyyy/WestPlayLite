@@ -1,4 +1,4 @@
-﻿import { createContext, useContext, useEffect } from 'react'
+import { createContext, useContext, useEffect } from 'react'
 import type { DemoCommand } from '../../cabin/demo'
 import type { AppId } from '../../cabin/state/apps'
 import type { Banner } from './TruckScreen'
@@ -98,7 +98,7 @@ export function useTour(presses: Press[] | null, startAfter = 1200) {
   const screen = useScreen()
   const key = presses ? JSON.stringify(presses) : ''
   useEffect(() => {
-    if (!presses) return; if (Date.now() > 0) return // Low-End Mode: tour disabled
+    if (!presses) return
     let active = true
     const wait = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms))
     const run = async () => {

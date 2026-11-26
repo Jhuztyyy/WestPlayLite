@@ -506,6 +506,7 @@ export const strings: Strings = {
     back: 'Atpakaļ',
   },
   apps: {
+    maps: 'Kartes',
     music: 'Mūzika',
     spotify: 'Spotify',
     youtube: 'YouTube',
@@ -513,6 +514,10 @@ export const strings: Strings = {
     player: 'Player',
     safari: 'Safari',
     podcasts: 'Podkāsti',
+    phone: 'Tālrunis',
+    messages: 'Ziņas',
+    calendar: 'Kalendārs',
+    weather: 'Laikapstākļi',
     settings: 'Iestatījumi',
   },
   notBuiltYet: 'Šī lietotne vēl nav gatava.',

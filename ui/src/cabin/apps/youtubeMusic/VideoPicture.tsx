@@ -29,7 +29,14 @@ export function VideoPicture({ cover }: { cover: string | undefined }) {
       useYouTubeMusic.setState({
         hole: { x: box.left - area.left, y: box.top - area.top, width: box.width, height: box.height, radius },
       })
-            /* Low-End Mode: music video overlay disabled */
+      const scale = window.devicePixelRatio
+      youtubeMusic({
+        action: 'show',
+        x: Math.round(box.left * scale),
+        y: Math.round(box.top * scale),
+        width: Math.round(box.width * scale),
+        height: Math.round(box.height * scale),
+      })
     }
     const following = followArea(place, element)
     // Now Playing rises in (a transform, which no size change tells of): placed again as it settles.

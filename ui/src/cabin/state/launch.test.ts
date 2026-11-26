@@ -5,7 +5,7 @@ import type { Route } from './navigation'
 const home: Route = { kind: 'home' }
 const dashboard: Route = { kind: 'dashboard' }
 const music: Route = { kind: 'app', app: 'music' }
-const maps: Route = { kind: 'app', app: 'youtube' }
+const maps: Route = { kind: 'app', app: 'maps' }
 
 describe('launchFor', () => {
   it('opens an app out of the icon that was clicked', () => {
@@ -50,7 +50,7 @@ describe('carriesLaunch', () => {
 
   it('only the clicked icon of the launching app takes part', () => {
     expect(carriesLaunch({ launch: open, phase: 'from' }, 'music', sidebarIcon)).toBe(false)
-    expect(carriesLaunch({ launch: open, phase: 'from' }, 'youtube', homeIcon)).toBe(false)
+    expect(carriesLaunch({ launch: open, phase: 'from' }, 'maps', homeIcon)).toBe(false)
     expect(carriesLaunch({ launch: null, phase: 'from' }, 'music', homeIcon)).toBe(false)
   })
 })

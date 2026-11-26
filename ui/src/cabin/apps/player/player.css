@@ -278,7 +278,7 @@
 }
 
 .shell .pl-bars.moving i {
-  animation: none; /* WestPlay Lite: no looping decoration */
+  animation: pl-bar 0.9s ease-in-out infinite alternate;
 }
 
 .shell .pl-bars.moving i:nth-child(2) {

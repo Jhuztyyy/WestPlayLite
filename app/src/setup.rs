@@ -69,18 +69,13 @@ impl Inner {
 /// WestPlay's plugin: shipped beside the app (its resources, or the app's own folder in an unbundled release
 /// build); while developing, the release build of it (the one the dev loop builds and installs).
 fn plugin_file(app: &AppHandle) -> Option<PathBuf> {
-    let mut candidates: Vec<PathBuf> = Vec::new();
-    if let Ok(dir) = app.path().resource_dir() {
-        candidates.push(dir.join(plugin::FILE_NAME));
-        candidates.push(dir.join("westplaylite_res").join(plugin::FILE_NAME));
-    }
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(parent) = exe.parent() {
-            candidates.push(parent.join(plugin::FILE_NAME));
-            candidates.push(parent.join("resources").join(plugin::FILE_NAME));
-        }
-    }
-    candidates.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../target/release").join(plugin::FILE_NAME));
+    let candidates: Vec<PathBuf> = if cfg!(debug_assertions) {
+        vec![PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../target/release").join(plugin::FILE_NAME)]
+    } else {
+        let resources = app.path().resource_dir().ok().map(|dir| dir.join(plugin::FILE_NAME));
+        let beside = std::env::current_exe().ok().and_then(|exe| Some(exe.parent()?.join(plugin::FILE_NAME)));
+        resources.into_iter().chain(beside).collect()
+    };
     candidates.into_iter().find(|path| path.is_file())
 }
 

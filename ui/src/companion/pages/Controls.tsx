@@ -17,7 +17,7 @@ export function Controls({ settings: state, cw }: PageProps) {
   const w = cw.controls
   const { settings, update, error } = state
   useScreenAt('home', GLOW.home, null)
-  useTour([...openAndClose('music', GLOW.music)])
+  useTour([...openAndClose('music', GLOW.music), ...openAndClose('maps', GLOW.maps)])
   return (
     <Panel place="page" title={w.title} sub={w.sub}>
       <p className="ob-group-title ob-in" style={n(4)}>

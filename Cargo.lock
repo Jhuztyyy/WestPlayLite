@@ -4590,6 +4590,7 @@ dependencies = [
 name = "westplay-host"
 version = "2.4.1"
 dependencies = [
+ "base64 0.22.1",
  "image",
  "lofty",
  "serde",

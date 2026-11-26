@@ -495,6 +495,7 @@ export const strings: Strings = {
     back: 'Назад',
   },
   apps: {
+    maps: 'Карты',
     music: 'Музыка',
     spotify: 'Spotify',
     youtube: 'YouTube',
@@ -502,6 +503,10 @@ export const strings: Strings = {
     player: 'Player',
     safari: 'Safari',
     podcasts: 'Подкасты',
+    phone: 'Телефон',
+    messages: 'Сообщения',
+    calendar: 'Календарь',
+    weather: 'Погода',
     settings: 'Настройки',
   },
   notBuiltYet: 'Это приложение пока не готово.',

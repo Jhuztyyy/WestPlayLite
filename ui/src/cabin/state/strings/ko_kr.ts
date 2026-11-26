@@ -480,6 +480,7 @@ export const strings: Strings = {
     back: '뒤로',
   },
   apps: {
+    maps: '지도',
     music: '음악',
     spotify: 'Spotify',
     youtube: 'YouTube',
@@ -487,6 +488,10 @@ export const strings: Strings = {
     player: 'Player',
     safari: 'Safari',
     podcasts: '팟캐스트',
+    phone: '전화',
+    messages: '메시지',
+    calendar: '캘린더',
+    weather: '날씨',
     settings: '설정',
   },
   notBuiltYet: '이 앱은 아직 준비 중입니다.',

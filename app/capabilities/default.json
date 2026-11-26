@@ -1,59 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Companion window: receives host status events and runs the app's commands.",
-  "local": true,
-  "windows": [
-    "main"
-  ],
-  "webviews": [
-    "main"
-  ],
-  "remote": {
-    "urls": [
-      "http://tauri.localhost/*",
-      "https://tauri.localhost/*",
-      "http://localhost:5173/*"
-    ]
-  },
-  "permissions": [
-    "core:default",
-    "allow-companion-ready",
-    "allow-window-in-front",
-    "allow-room-held",
-    "allow-set-westplay-open",
-    "allow-youtube-sign-in",
-    "allow-youtube-sign-out",
-    "allow-youtube-check",
-    "allow-spotify-sign-in",
-    "allow-spotify-sign-out",
-    "allow-spotify-check",
-    "allow-apple-music-sign-in",
-    "allow-apple-music-sign-out",
-    "allow-apple-music-check",
-    "allow-open-support-page",
-    "allow-open-social",
-    "allow-app-log-place",
-    "allow-customize-list",
-    "allow-add-wallpapers",
-    "allow-add-icon-set",
-    "allow-remove-wallpaper",
-    "allow-remove-icon-set",
-    "allow-update-offer",
-    "allow-look-for-update",
-    "allow-install-update",
-    "allow-get-settings",
-    "allow-update-settings",
-    "allow-key-name",
-    "allow-setup-state",
-    "allow-game-running",
-    "allow-prepare-maps-again",
-    "allow-choose-game-folder",
-    "allow-check-game",
-    "allow-install-into-game",
-    "allow-finish-setup",
-    "allow-uninstall-from-game",
-    "allow-remove-data",
-    "allow-leave-pc"
-  ]
+  "description": "Companion window: receives host status events.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
 }

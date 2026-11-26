@@ -78,10 +78,10 @@ export function Shell({ children, overlay, entering = false }: ShellProps) {
   // the apps and the screen changes' snapshots too.
   const reduceTransparency = useCabin((state) => state.reduceTransparency)
   useLayoutEffect(() => {
-    document.documentElement.classList.toggle('reduce-transparency', true)
+    document.documentElement.classList.toggle('reduce-transparency', reduceTransparency)
   }, [reduceTransparency])
   // Liquid Glass's lens and touch, for every glass surface as it comes (liquidGlass.ts).
-  useEffect(() => { void startLiquidGlass }, []) // Low-End Mode: Liquid Glass disabled
+  useEffect(() => startLiquidGlass(), [])
 
   // Handed to the truck (the sidebar's truck button, or the W shortcut): CarPlay shrinks into WestPlay's
   // button and the truck's own screen shows; the button grows it back.
