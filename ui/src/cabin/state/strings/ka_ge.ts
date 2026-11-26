@@ -485,7 +485,6 @@ export const strings: Strings = {
     back: 'უკან',
   },
   apps: {
-    maps: 'რუკები',
     music: 'მუსიკა',
     spotify: 'Spotify',
     youtube: 'YouTube',
@@ -493,10 +492,6 @@ export const strings: Strings = {
     player: 'Player',
     safari: 'Safari',
     podcasts: 'პოდკასტები',
-    phone: 'ტელეფონი',
-    messages: 'შეტყობინებები',
-    calendar: 'კალენდარი',
-    weather: 'ამინდი',
     settings: 'პარამეტრები',
   },
   notBuiltYet: 'ეს აპი ჯერ მზად არ არის.',

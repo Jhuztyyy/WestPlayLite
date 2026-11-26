@@ -15,7 +15,9 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use setup::SetupStore;
-use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WebviewWindow};
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WebviewWindow, WindowEvent};
 use westplay_host::maps::SetUpGame;
 use westplay_host::settings::{Settings, SettingsFile, SharedSettings};
 use westplay_host::{
@@ -181,19 +183,21 @@ fn get_settings(store: State<SettingsStore>) -> Settings {
 #[tauri::command]
 fn update_settings(settings: Settings, store: State<SettingsStore>, app: AppHandle) -> Result<Settings, String> {
     store.file.save(&settings).map_err(|e| format!("Couldn't save the settings: {e}"))?;
+    westplay_host::graphics::set_game_first(settings.graphics.game_first);
     store.shared.set(settings.clone());
     let _ = app.emit("settings-changed", &settings);
     Ok(settings)
 }
 
 fn main() {
-    // Low-End Mode: reduce WebView2 memory footprint, disable smooth-scrolling & cap renderer processes
+    // WestPlay Lite: only smooth scrolling off. (--renderer-process-limit and --enable-low-end-device-mode applied to
+    // every WebView2 of the process, the host's hidden cab, Spotify and YouTube pages included.)
     if std::env::var_os("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").is_none() {
         #[allow(unused_unsafe)]
         unsafe {
             std::env::set_var(
                 "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
-                "--enable-low-end-device-mode --disable-smooth-scrolling --renderer-process-limit=2",
+                "--disable-smooth-scrolling",
             );
         }
     }
@@ -272,7 +276,10 @@ fn main() {
             }
             let config_dir = app.path().app_config_dir()?;
             let file = SettingsFile::in_dir(&config_dir);
-            let shared = Arc::new(SharedSettings::new(file.load()));
+            let loaded = file.load();
+            // WestPlay Lite: before the host's browsers start, which take the priority from here.
+            westplay_host::graphics::set_game_first(loaded.graphics.game_first);
+            let shared = Arc::new(SharedSettings::new(loaded));
             let setup = SetupStore::load(&config_dir, app.handle());
             setup::watch_installed_mods(&setup);
             let customize = customize::Customize {
@@ -292,16 +299,53 @@ fn main() {
             app.manage(setup);
             app.manage(std::sync::Mutex::new(host));
             update::watch(app.handle());
+            // WestPlay Lite: the companion's X puts it in the tray (the icons by the clock) and the host goes on.
+            let open = MenuItem::with_id(app, "open", "Open WestPlay", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "Quit WestPlay", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&open, &quit])?;
+            let mut tray = TrayIconBuilder::new()
+                .menu(&menu)
+                .tooltip("WestPlay")
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "open" => show_companion(app),
+                    "quit" => app.exit(0),
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                        show_companion(tray.app_handle());
+                    }
+                });
+            if let Some(icon) = app.default_window_icon() {
+                tray = tray.icon(icon.clone());
+            }
+            tray.build(app)?;
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("failed to build the WestPlay app");
 
-    app.run(|app, event| {
-        if let RunEvent::Exit = event {
-            stop_host(app);
+    app.run(|app, event| match event {
+        // The X of the companion window hides it to the tray; "Quit WestPlay" there ends the app.
+        RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { api, .. }, .. } if label == "main" => {
+            api.prevent_close();
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.hide();
+            }
         }
+        RunEvent::Exit => stop_host(app),
+        _ => {}
     });
+}
+
+/// Brings the companion window back from the tray.
+fn show_companion(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
 }
 
 /// Stops the host, so its WebView2 shuts down cleanly with the app (it quitting, or an update's installer

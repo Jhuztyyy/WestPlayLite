@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-add-wallpapers"
+description = "Enables the add_wallpapers command without any pre-configured scope."
+commands.allow = ["add_wallpapers"]
+
+[[permission]]
+identifier = "deny-add-wallpapers"
+description = "Denies the add_wallpapers command without any pre-configured scope."
+commands.deny = ["add_wallpapers"]

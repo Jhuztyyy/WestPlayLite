@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-key-name"
+description = "Enables the key_name command without any pre-configured scope."
+commands.allow = ["key_name"]
+
+[[permission]]
+identifier = "deny-key-name"
+description = "Denies the key_name command without any pre-configured scope."
+commands.deny = ["key_name"]

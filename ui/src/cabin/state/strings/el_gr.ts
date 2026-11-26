@@ -486,7 +486,6 @@ export const strings: Strings = {
     back: 'Πίσω',
   },
   apps: {
-    maps: 'Χάρτες',
     music: 'Μουσική',
     spotify: 'Spotify',
     youtube: 'YouTube',
@@ -494,10 +493,6 @@ export const strings: Strings = {
     player: 'Player',
     safari: 'Safari',
     podcasts: 'Podcast',
-    phone: 'Τηλέφωνο',
-    messages: 'Μηνύματα',
-    calendar: 'Ημερολόγιο',
-    weather: 'Καιρός',
     settings: 'Ρυθμίσεις',
   },
   notBuiltYet: 'Αυτή η εφαρμογή δεν είναι ακόμη έτοιμη.',

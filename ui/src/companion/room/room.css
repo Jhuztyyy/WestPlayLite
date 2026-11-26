@@ -1243,28 +1243,3 @@ button.ob-row:active {
     transition-duration: 1ms !important;
   }
 }
-
-/* === WESTPLAYLITE LOW-END GPU OVERRIDES === */
-.ob, .ob *, .ts, .ts * {
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  animation: none !important;
-  transition: none !important;
-  box-shadow: none !important;
-  text-shadow: none !important;
-}
-.ts-light, .ts-scan {
-  display: none !important;
-}
-.ts, .ts-tilt, .ts-bezel, .ts-glass {
-  transform: none !important;
-  perspective: none !important;
-  filter: none !important;
-  will-change: auto !important;
-}
-
-/* === WESTPLAYLITE LOW-END SETUP & COMPANION CSS === */
-.ob, .ob *, .ts, .ts * { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; animation: none !important; transition: none !important; box-shadow: none !important; text-shadow: none !important; }
-.ts-light, .ts-scan, .ts-cursor { display: none !important; }
-.ts-tilt { transform: none !important; }
-.ts, .ts-bezel, .ts-glass, .ts-frame { perspective: none !important; filter: none !important; will-change: auto !important; }

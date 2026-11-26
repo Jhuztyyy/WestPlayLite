@@ -57,17 +57,32 @@ pub fn same(a: LUID, b: LUID) -> bool {
     (a.HighPart, a.LowPart) == (b.HighPart, b.LowPart)
 }
 
-/// The GPU to draw the cab on: the player's `chosen` one if it's among `adapters`; otherwise the `game`'s
-/// once it's known; otherwise the one it's drawn on now (`current`), so the game closing changes nothing;
-/// otherwise the first (Windows' high-performance GPU). `None` without any GPU listed.
-pub fn choose(_chosen: Option<&str>, _game: Option<LUID>, _current: Option<LUID>, _adapters: &[Adapter]) -> Option<LUID> {
-    // Low-End Mode: keep WebView2 on the integrated GPU with default browser args so Radeon 530 stays free for ETS2.
-    None
+/// The GPU to draw the cab on: the player's `chosen` one if it's among `adapters`, otherwise `None` (WebView2's
+/// own default). The `game` and `current` parameters are kept for the callers' sake.
+pub fn choose(chosen: Option<&str>, _game: Option<LUID>, _current: Option<LUID>, adapters: &[Adapter]) -> Option<LUID> {
+    // WestPlay Lite: the player's choice (companion, Truck Screen) is honoured. Without one ("Automatic") nothing is
+    // forced: WebView2 keeps Windows' default GPU (normally the integrated one), so a discrete GPU stays free for
+    // the game. A chosen GPU that is gone (unplugged) falls back to Automatic.
+    chosen.and_then(|id| adapters.iter().find(|a| a.id == id)).map(|a| a.luid)
 }
 
 /// The browser argument that has WebView2 draw on `luid`.
 pub fn browser_argument(luid: LUID) -> String {
     format!("--use-adapter-luid={},{}", luid.HighPart, luid.LowPart)
+}
+
+/// WestPlay Lite: runs WestPlay below the game (`on`), or as any program (`!on`). Browsers started afterwards
+/// (the host's, the cab's pages) take the priority from WestPlay, so a change reaches those at the next start.
+#[allow(unused_unsafe)]
+pub fn set_game_first(on: bool) {
+    use windows::Win32::System::Threading::{
+        BELOW_NORMAL_PRIORITY_CLASS, GetCurrentProcess, NORMAL_PRIORITY_CLASS, SetPriorityClass,
+    };
+    let class = if on { BELOW_NORMAL_PRIORITY_CLASS } else { NORMAL_PRIORITY_CLASS };
+    // SAFETY: the current process's own pseudo-handle, and a priority class constant.
+    unsafe {
+        let _ = SetPriorityClass(GetCurrentProcess(), class);
+    }
 }
 
 /// The GPU's name, among `adapters`.
@@ -112,21 +127,18 @@ mod tests {
     }
 
     #[test]
-    fn picks_the_players_choice_then_the_games_then_keeps_its_own() {
+    fn honours_the_players_choice_and_otherwise_leaves_webview2_alone() {
         let gpus = gpus();
         let (nvidia, radeon) = (Some(luid(0x10e61)), Some(luid(0x11deb)));
         let pick = |chosen, game, current| choose(chosen, game, current, &gpus).map(|l| l.LowPart);
-        // Before the game: Windows' high-performance GPU.
-        assert_eq!(pick(None, None, None), Some(0x10e61));
-        // The game on the Radeon: there too.
-        assert_eq!(pick(None, radeon, nvidia), Some(0x11deb));
-        // The game gone: where it is.
-        assert_eq!(pick(None, None, radeon), Some(0x11deb));
-        // The player's choice wins, even over the game's.
+        // Automatic: nothing forced, whatever the game or the current GPU is.
+        assert_eq!(pick(None, None, None), None);
+        assert_eq!(pick(None, radeon, nvidia), None);
+        // The player's choice is used, even over the game's.
         assert_eq!(pick(Some("1002:164e:00000000:197"), nvidia, nvidia), Some(0x11deb));
-        // A chosen GPU that's gone (unplugged), or a LUID not listed (a stale one): WestPlay picks.
-        assert_eq!(pick(Some("10de:0000:00000000:1"), radeon, None), Some(0x11deb));
-        assert_eq!(pick(None, Some(luid(0x99)), Some(luid(0x98))), Some(0x10e61));
+        assert_eq!(pick(Some("10de:2702:00000000:161"), radeon, None), Some(0x10e61));
+        // A chosen GPU that's gone (unplugged): Automatic.
+        assert_eq!(pick(Some("10de:0000:00000000:1"), radeon, None), None);
         assert_eq!(choose(None, None, None, &[]), None);
     }
 

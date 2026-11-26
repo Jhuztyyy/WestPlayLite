@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-set-westplay-open"
+description = "Enables the set_westplay_open command without any pre-configured scope."
+commands.allow = ["set_westplay_open"]
+
+[[permission]]
+identifier = "deny-set-westplay-open"
+description = "Denies the set_westplay_open command without any pre-configured scope."
+commands.deny = ["set_westplay_open"]

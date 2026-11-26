@@ -494,7 +494,6 @@ export const strings: Strings = {
     back: 'Tagasi',
   },
   apps: {
-    maps: 'Kaardid',
     music: 'Muusika',
     spotify: 'Spotify',
     youtube: 'YouTube',
@@ -502,10 +501,6 @@ export const strings: Strings = {
     player: 'Player',
     safari: 'Safari',
     podcasts: 'Taskuhäälingud',
-    phone: 'Telefon',
-    messages: 'Sõnumid',
-    calendar: 'Kalender',
-    weather: 'Ilm',
     settings: 'Seaded',
   },
   notBuiltYet: 'See rakendus pole veel valmis.',
