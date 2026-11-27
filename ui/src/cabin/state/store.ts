@@ -16,7 +16,7 @@ import {
   toEqualizer,
   type TruckInfo,
 } from '../../shared/host'
-import type { Maneuver, TurnKind } from '../maps/guidance'
+import type { Maneuver } from '../maps/guidance'
 import {
   receiveAnswer as receiveAppleMusicAnswer,
   receivePlayback as receiveAppleMusicPlayback,
@@ -27,7 +27,7 @@ import {
   receivePlayback,
   receiveState as receiveSpotifyState,
 } from '../apps/spotify/spotify'
-import { receiveAnswer, receiveState, useYouTube } from '../apps/youtube/youtube'
+import { command as youtubeCommand, playCast, receiveAnswer, receiveState, useYouTube } from '../apps/youtube/youtube'
 import { receiveFolder, receivePlayback as receivePlayerPlayback } from '../apps/player/player'
 import {
   receiveClosed as receiveSafariClosed,
@@ -45,9 +45,7 @@ import {
   receiveState as receiveYouTubeMusicState,
 } from '../apps/youtubeMusic/youtubeMusic'
 import { useKeyboard } from '../keyboard/store'
-import { receiveMapFolder } from '../maps/mapData'
-import { receiveDetours, receiveFollowed, receiveRouteAnswer, receiveRoutes } from '../maps/routeChange'
-import { type Point, restLine, type RouteNode, routeSpans } from '../maps/route'
+import type { Point, RouteNode } from '../maps/route'
 import { DEFAULT_WALLPAPER_ID } from '../wallpapers'
 import { isReleasedApp } from './apps'
 import type { AppearanceMode } from './appearance'
@@ -67,9 +65,9 @@ import { isScreenLayoutId, type ScreenLayoutId } from './screen'
 import { DEFAULT_TEXT_SIZE, STEPS_ADDED_BELOW, toTextSize } from './textSize'
 
 /** The Dashboard's widgets the player can turn off (turn-by-turn always shows while there's a route). */
-export type DashboardWidget = 'nowPlaying' | 'destination' | 'weather'
+export type DashboardWidget = 'nowPlaying' | 'destination'
 
-export const DASHBOARD_WIDGETS: readonly DashboardWidget[] = ['nowPlaying', 'destination', 'weather']
+export const DASHBOARD_WIDGETS: readonly DashboardWidget[] = ['nowPlaying', 'destination']
 
 /**
  * Cabin state that the UI renders from. Telemetry lives in its own store (`useLive`) because it updates
@@ -152,7 +150,7 @@ type Persisted = Pick<
   | 'brightness'
 >
 
-const ALL_WIDGETS: Record<DashboardWidget, boolean> = { nowPlaying: true, destination: true, weather: true }
+const ALL_WIDGETS: Record<DashboardWidget, boolean> = { nowPlaying: true, destination: true }
 
 export const useCabin = create<CabinState>()(
   persist(
@@ -460,86 +458,17 @@ function receiveHostMessage(now: () => number): (message: HostMessage) => void {
       case 'job':
         useLive.setState({ job: message.data.active ? message.data : null })
         break
-      case 'garages':
-        useLive.setState({ ownedGarages: message.owned, headquarters: message.headquarters })
-        break
-      case 'routeAnswer':
-        receiveRouteAnswer(message.id, message.answer)
-        break
-      case 'routes':
-        receiveRoutes(message.id, message.routes)
-        break
-      case 'offeredWays': {
-        const known = useLive.getState().offeredLines
-        const lines = known?.id === message.id ? [...known.lines] : []
-        const nodes = message.nodes.map(([x, z, fx, fz]): RouteNode => ({ position: [x, z], forward: [fx, fz] }))
-        lines[message.index] = restLine(routeSpans(nodes, new Map(message.paths), new Map(message.shifts)), -1)
-        useLive.setState({ offeredLines: { id: message.id, lines } })
-        break
-      }
-      case 'followed':
-        receiveFollowed(message.id, message.follows, message.answer)
-        break
-      case 'detours':
-        receiveDetours(message.id, message.seconds)
-        break
       case 'typed':
         for (const event of message.events) useKeyboard.getState().typed(event)
         break
       case 'typingState':
         useKeyboard.setState({ physical: message.state })
         break
-      case 'mapBlock':
-        useLive.setState({
-          hvtMap: message.hvt ? { language: message.language } : null,
-          gameLanguage: message.language,
-        })
-        break
       case 'timeZones':
         useLive.setState({ timeZones: message.on })
         break
       case 'units':
         if (message.mph !== null) useLive.setState({ mph: message.mph })
-        break
-      case 'route':
-        useLive.setState({
-          route:
-            message.id === null || message.nodes === null
-              ? null
-              : {
-                  id: message.id,
-                  nodes: message.nodes.map(([x, z, fx, fz]) => ({ position: [x, z], forward: [fx, fz] })),
-                  distances: message.nodes.map((node) => node[4]),
-                  heights: message.nodes.map((node) => node[5]),
-                  paths: new Map(),
-                  maneuvers: [],
-                  shifts: new Map(),
-                },
-          routeNext: 0,
-          routeStops: [],
-        })
-        break
-      case 'routeStops':
-        if (useLive.getState().route?.id === message.id) useLive.setState({ routeStops: message.stops })
-        break
-      case 'routePaths': {
-        const route = useLive.getState().route
-        if (route?.id !== message.id) break
-        const maneuvers = message.maneuvers.map(([node, turn, angle, exit]) => ({
-          node,
-          turn: turn as TurnKind,
-          angle,
-          exit,
-        }))
-        const shifts = new Map(message.shifts ?? [])
-        useLive.setState({ route: { ...route, paths: new Map(message.paths), maneuvers, shifts } })
-        break
-      }
-      case 'routeNext':
-        useLive.setState({ routeNext: message.next })
-        break
-      case 'weather':
-        useLive.setState({ weather: message.weather })
         break
       case 'screen':
         // A layout this UI doesn't know yet (newer plugin) is treated like a screen without a profile.
@@ -579,6 +508,18 @@ function receiveHostMessage(now: () => number): (message: HostMessage) => void {
       case 'youtube':
         receiveState(message.state)
         break
+      case 'castVideo':
+        // WestPlay Lite: what the phone chose (an 11-character id, as the host checked) plays in the YouTube app.
+        if (/^[\w-]{11}$/.test(message.video)) {
+          go({ type: 'openApp', app: 'youtube' })
+          playCast({ video: message.video, title: '', channel: '', avatar: null, thumbnail: null, duration: '', views: '', age: '', live: false })
+        }
+        break
+      case 'castState':
+        // WestPlay Lite: the phone paused, played or moved within the video it cast: the YouTube player does too.
+        if (message.seek) youtubeCommand({ action: 'seek', seconds: message.time })
+        youtubeCommand({ action: message.paused ? 'pause' : 'play' })
+        break
       case 'gameShown':
         useLive.setState({ gameShown: message.shown })
         break
@@ -587,21 +528,6 @@ function receiveHostMessage(now: () => number): (message: HostMessage) => void {
         break
       case 'keybind':
         useLive.setState((live) => ({ keybind: { action: message.action, count: (live.keybind?.count ?? 0) + 1 } }))
-        break
-      case 'truckersmp':
-        useLive.setState({
-          truckersmp: message.on,
-          truckersmpGame: message.game ?? null,
-          ...(message.on ? {} : { nearby: null }),
-        })
-        break
-      case 'nearby':
-        useLive.setState({
-          nearby:
-            message.server === null || message.local === null
-              ? null
-              : { server: message.server, local: message.local, players: message.players, at: now() },
-        })
         break
       case 'game':
         // The game closed: the screen goes off as with the truck's electrics (the kept apps go with it), and
@@ -616,9 +542,6 @@ function receiveHostMessage(now: () => number): (message: HostMessage) => void {
         break
       case 'youtubeSignIn':
         useYouTube.setState({ signingIn: message.open })
-        break
-      case 'map':
-        receiveMapFolder(message.folder, message.built)
         break
       case 'spotify':
         receiveSpotifyState(message.signedIn, message.playing, message.signingIn)

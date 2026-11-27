@@ -120,7 +120,8 @@ export const useYouTube = create<YouTubeStore>()(
       upNext: null,
       queue: null,
       captions: null,
-      quality: 'auto',
+      // WestPlay Lite: 480p until the player picks otherwise (decoding and drawing 1080p is what lags a weak PC).
+      quality: 'large',
       rate: 1,
       searches: [],
       watched: [],
@@ -154,7 +155,7 @@ export const useYouTube = create<YouTubeStore>()(
           account: keptAccount(account) ?? current.account,
           captions: typeof captions === 'string' && /^[\w.-]{1,64}$/.test(captions) ? captions : null,
           quality:
-            typeof quality === 'string' && (quality === 'auto' || QUALITIES.includes(quality)) ? quality : 'auto',
+            typeof quality === 'string' && (quality === 'auto' || QUALITIES.includes(quality)) ? quality : 'large',
           volume: typeof volume === 'number' && volume >= 0 && volume <= 100 ? Math.round(volume) : 100,
           muted: muted === true,
           searches: Array.isArray(searches)
@@ -380,6 +381,55 @@ export function play(video: YouTubeVideo, fullScreen = true, queue?: Queue): voi
   command(resume ? { action: 'load', video: video.video, start: before.time } : { action: 'load', video: video.video })
   if (useYouTube.getState().queue) extendQueue()
   else fetchUpNext(video.video)
+}
+
+/** WestPlay Lite: the video a phone cast, while it's the one playing. */
+let cast: string | null = null
+
+/** Plays a video a phone cast. */
+export function playCast(video: YouTubeVideo): void {
+  cast = video.video
+  play(video)
+  guardCastEnd(video.video)
+}
+
+/** Whether the cast `video` plays and is about to end (`state` is its player's: the video it has, playing, with
+ * under a second and a half left at `position`). */
+export function castEnding(state: YouTubeState | null, video: string, position: number): boolean {
+  return (
+    state !== null &&
+    state.video === video &&
+    state.state === 1 &&
+    !state.live &&
+    state.duration > 5 &&
+    state.duration - position < 1.5
+  )
+}
+
+let castGuard: ReturnType<typeof setInterval> | null = null
+
+/** A cast video is held just before its end: YouTube's own page, which plays it, goes on to its own next video the
+ * moment one ends, and the phone's next comes (as a cast) only a second or two later. */
+function guardCastEnd(video: string): void {
+  if (castGuard !== null) clearInterval(castGuard)
+  castGuard = setInterval(() => {
+    const { current, state } = useYouTube.getState()
+    const stop = () => {
+      if (castGuard !== null) clearInterval(castGuard)
+      castGuard = null
+    }
+    if (current?.video !== video) return stop()
+    if (castEnding(state, video, positionNow())) {
+      command({ action: 'pause' })
+      stop()
+    }
+  }, 300)
+}
+
+/** Whether the video playing is one a phone cast: what follows it is the phone's queue, which the cast brings (the
+ * next video comes as a new cast), not this player's own Up next. */
+export function isCast(): boolean {
+  return cast !== null && useYouTube.getState().current?.video === cast
 }
 
 /** The playlist's next videos, asked for as it nears the end of those it has. */

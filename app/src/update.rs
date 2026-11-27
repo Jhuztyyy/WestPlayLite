@@ -19,6 +19,10 @@ use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_updater::{Update, UpdaterExt};
 use westplay_host::log;
 
+/// WestPlay Lite 1.0.0 never looks for updates: the releases it would find are upstream's (2.4.1 and later), and
+/// installing one would replace this fork with the original.
+const LITE: bool = true;
+
 /// The first look, once WestPlay has started (not to slow its start).
 const FIRST_LOOK: Duration = Duration::from_secs(30);
 /// Then this often.
@@ -61,7 +65,7 @@ struct Progress {
 
 /// Looks for updates in the background, from now on: a little after the start, then every few hours.
 pub fn watch(app: &AppHandle) {
-    if cfg!(debug_assertions) {
+    if cfg!(debug_assertions) || LITE {
         return;
     }
     let app = app.clone();
@@ -80,6 +84,9 @@ pub fn watch(app: &AppHandle) {
 /// Looks for an update: one found is kept for [`install_update`] and told to the companion (`update-found`).
 /// `Err` when the look couldn't be made.
 async fn look(app: &AppHandle) -> Result<Option<Offer>, ()> {
+    if LITE {
+        return Ok(None);
+    }
     // The host stopped before the installer runs, as when WestPlay quits: the installer replaces its files.
     let handle = app.clone();
     let updater = match app.updater_builder().on_before_exit(move || crate::stop_host(&handle)).build() {

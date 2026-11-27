@@ -28,15 +28,13 @@ export const RECENTS_LIMIT = APP_IDS.length
 
 /**
  * The sidebar's slots, as CarPlay's (owner 2026-11-03): not the last opened apps but one app of each kind, the
- * last used of it: a maps app, a music app, Phone or Messages, and the fourth Calendar, Weather, Settings or Safari
- * (owner 2026-11-08). Each slot's apps, its first shown until another is used. A slot whose apps this release hasn't
+ * last used of it: a music app, then Settings or Safari (WestPlay Lite has no Maps, Phone, Messages, Calendar or
+ * Weather app). Each slot's apps, its first shown until another is used. A slot whose apps this release hasn't
  * is left out.
  */
 const SIDEBAR_SLOTS: readonly (readonly AppId[])[] = [
-  ['maps'],
   ['music', 'spotify', 'youtubeMusic', 'player', 'podcasts'],
-  ['phone', 'messages'],
-  ['calendar', 'weather', 'settings', 'safari'],
+  ['settings', 'safari'],
 ]
 
 /** At most this many: the fourth (Calendar, Weather, Settings or Safari) only where the screen has room
@@ -56,7 +54,7 @@ export function sidebarApps(recents: readonly AppId[], room: number): AppId[] {
 
 export const INITIAL_NAVIGATION: NavigationState = {
   route: { kind: 'dashboard' },
-  recents: ['maps', 'music', 'youtube', 'spotify', 'youtubeMusic'],
+  recents: ['music', 'youtube', 'spotify', 'youtubeMusic'],
   base: 'dashboard',
 }
 

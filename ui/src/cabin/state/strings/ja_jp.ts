@@ -481,7 +481,6 @@ export const strings: Strings = {
     back: '戻る',
   },
   apps: {
-    maps: 'マップ',
     music: 'ミュージック',
     spotify: 'Spotify',
     youtube: 'YouTube',
@@ -489,10 +488,6 @@ export const strings: Strings = {
     player: 'Player',
     safari: 'Safari',
     podcasts: 'Podcast',
-    phone: '電話',
-    messages: 'メッセージ',
-    calendar: 'カレンダー',
-    weather: '天気',
     settings: '設定',
   },
   notBuiltYet: 'このアプリはまだ準備中です。',

@@ -161,66 +161,6 @@ describe('connectHost', () => {
     disconnect()
   })
 
-  it('draws the routes offered as the game route, each as the host reads it, for the latest request', async () => {
-    const webview = fakeWebView()
-    vi.stubGlobal('window', { chrome: { webview: webview.bridge } })
-    const { connectHost, useLive } = await import('./store')
-    const disconnect = connectHost(() => 0)
-    // A road 80 m east, the route 2 m right of its line.
-    const nodes: [number, number, number, number][] = [
-      [0, 0, 1, 0],
-      [80, 0, 1, 0],
-    ]
-    const shifts: [number, number][] = [
-      [0, 2],
-      [1, 2],
-    ]
-    const route = { nodes, paths: [], shifts }
-    webview.send({ type: 'offeredWays', id: 3, index: 1, ...route })
-    const offered = useLive.getState().offeredLines
-    expect(offered?.id).toBe(3)
-    expect(offered?.lines[0]).toBeUndefined()
-    expect(offered?.lines[1]).toHaveLength(11)
-    expect(offered?.lines[1]?.[0]).toEqual([0, 2])
-    expect(offered?.lines[1]?.[10]).toEqual([80, 2])
-    // The next as it comes, the first kept; another request's alone.
-    webview.send({ type: 'offeredWays', id: 3, index: 0, ...route })
-    expect(useLive.getState().offeredLines?.lines[1]).toHaveLength(11)
-    webview.send({ type: 'offeredWays', id: 4, index: 0, ...route })
-    expect(useLive.getState().offeredLines?.id).toBe(4)
-    expect(useLive.getState().offeredLines?.lines[1]).toBeUndefined()
-    disconnect()
-  })
-
-  it("keeps TruckersMP's players around the player, and forgets them when the game isn't under it", async () => {
-    const webview = fakeWebView()
-    vi.stubGlobal('window', { chrome: { webview: webview.bridge } })
-    const { connectHost, useLive } = await import('./store')
-    const disconnect = connectHost(() => 5)
-    webview.send({ type: 'nearby', server: 4, local: 113, players: [[7, -6175.5, 2139, 0.25]] })
-    expect(useLive.getState().nearby).toEqual({ server: 4, local: 113, players: [[7, -6175.5, 2139, 0.25]], at: 5 })
-    // None to tell: none kept.
-    webview.send({ type: 'nearby', server: null, local: null, players: [] })
-    expect(useLive.getState().nearby).toBeNull()
-    webview.send({ type: 'nearby', server: 4, local: 113, players: [] })
-    webview.send({ type: 'truckersmp', on: false })
-    expect(useLive.getState().nearby).toBeNull()
-    disconnect()
-  })
-
-  it('keeps the weather the host reads, and forgets it when the host can no longer read it', async () => {
-    const webview = fakeWebView()
-    vi.stubGlobal('window', { chrome: { webview: webview.bridge } })
-    const { connectHost, useLive } = await import('./store')
-    const disconnect = connectHost(() => 0)
-    expect(useLive.getState().weather).toBeNull()
-    webview.send({ type: 'weather', weather: { now: 'clear', coming: 'rain' } })
-    expect(useLive.getState().weather).toEqual({ now: 'clear', coming: 'rain' })
-    webview.send({ type: 'weather', weather: null })
-    expect(useLive.getState().weather).toBeNull()
-    disconnect()
-  })
-
   it("tells the host the field selected, and types what the player's keyboard typed", async () => {
     const webview = fakeWebView()
     vi.stubGlobal('window', { chrome: { webview: webview.bridge } })

@@ -493,7 +493,6 @@ export const strings: Strings = {
     back: 'Vissza',
   },
   apps: {
-    maps: 'Térképek',
     music: 'Zene',
     spotify: 'Spotify',
     youtube: 'YouTube',
@@ -501,10 +500,6 @@ export const strings: Strings = {
     player: 'Player',
     safari: 'Safari',
     podcasts: 'Podcastok',
-    phone: 'Telefon',
-    messages: 'Üzenetek',
-    calendar: 'Naptár',
-    weather: 'Időjárás',
     settings: 'Beállítások',
   },
   notBuiltYet: 'Ez az app még nem készült el.',

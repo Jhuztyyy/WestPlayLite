@@ -15,7 +15,9 @@ use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use setup::SetupStore;
-use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WebviewWindow};
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, State, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent};
 use westplay_host::maps::SetUpGame;
 use westplay_host::settings::{Settings, SettingsFile, SharedSettings};
 use westplay_host::{
@@ -181,12 +183,306 @@ fn get_settings(store: State<SettingsStore>) -> Settings {
 #[tauri::command]
 fn update_settings(settings: Settings, store: State<SettingsStore>, app: AppHandle) -> Result<Settings, String> {
     store.file.save(&settings).map_err(|e| format!("Couldn't save the settings: {e}"))?;
+    westplay_host::graphics::set_game_first(settings.graphics.game_first);
+    set_cast(&app, settings.graphics.youtube_cast);
     store.shared.set(settings.clone());
     let _ = app.emit("settings-changed", &settings);
     Ok(settings)
 }
 
+/// WestPlay Lite's cast target (westplay-cast), while it's on.
+#[derive(Default)]
+struct CastState(std::sync::Mutex<Option<westplay_cast::Handle>>);
+
+/// Turns the cast target on or off, as the setting says (a change only: on again when it's on already does nothing).
+fn set_cast(app: &AppHandle, on: bool) {
+    let Some(state) = app.try_state::<CastState>() else { return };
+    let Ok(mut cast) = state.0.lock() else { return };
+    if on == cast.is_some() {
+        return;
+    }
+    if !on {
+        *cast = None;
+        westplay_host::log!("[cast] off");
+        return;
+    }
+    let handle = app.clone();
+    let report = move |event: westplay_cast::Event| {
+        // Searches repeat every few seconds from every TV on the network: not logged.
+        if !matches!(event, westplay_cast::Event::Search { .. }) {
+            westplay_host::log!("[cast] {event:?}");
+        }
+        match &event {
+            westplay_cast::Event::Launch { body, .. } => open_cast_window(&handle, body),
+            westplay_cast::Event::Stop { .. } => {
+                if let Some(window) = handle.get_webview_window("cast") {
+                    let _ = window.close();
+                }
+            }
+            _ => {}
+        }
+    };
+    match westplay_cast::start("WestPlay", report) {
+        Ok(handle) => {
+            *cast = Some(handle);
+            westplay_host::log!("[cast] on: WestPlay shows in a phone's cast list");
+        }
+        Err(error) => westplay_host::log!("[cast] couldn't start: {error}"),
+    }
+}
+
+/// Whether the cast window is shown as a window (to see what the TV page does). Not shown, it's a window the system
+/// still counts as in sight, so the TV page keeps running and keeps its phone connected, but one nobody sees: no frame,
+/// not on the taskbar, behind everything, never focused (the game stays in front), its corner the only pixel on the
+/// screen. A hidden window never paints, and a TV page that doesn't paint can stall.
+const CAST_WINDOW_SHOWN: bool = false;
+
+/// The user agent of a smart TV (Samsung's Tizen): YouTube's TV page is for these.
+const CAST_USER_AGENT: &str = "Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) 76.0.3809.146/6.0 TV Safari/537.36";
+
+/// Run before YouTube's own scripts in the cast window. VP9 and AV1 are said not to be supported, so YouTube sends
+/// H.264, which a weak PC's GPU decodes (as the h264ify extension does). And the window is silent: the truck's
+/// screen plays the video, this window only receives the phone's commands.
+const CAST_SCRIPT: &str = r#"(function () {
+  var avoid = /vp0?9|av0?1/i;
+  try {
+    var media = window.MediaSource;
+    if (media && media.isTypeSupported) {
+      var supported = media.isTypeSupported.bind(media);
+      media.isTypeSupported = function (type) { return avoid.test(String(type)) ? false : supported(type); };
+    }
+    var proto = window.HTMLMediaElement && window.HTMLMediaElement.prototype;
+    if (proto && proto.canPlayType) {
+      var canPlay = proto.canPlayType;
+      proto.canPlayType = function (type) { return avoid.test(String(type)) ? '' : canPlay.call(this, type); };
+    }
+  } catch (error) {}
+  // The page is told it's in sight, hidden or not: a TV page that sees itself hidden may pause what it plays.
+  try {
+    Object.defineProperty(document, 'hidden', { configurable: true, get: function () { return false; } });
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: function () { return 'visible'; } });
+    document.addEventListener('visibilitychange', function (event) { event.stopImmediatePropagation(); }, true);
+  } catch (error) {}
+  // The name the phone shows once connected: the TV page names itself after the TV it takes itself for ("Samsung
+  // SmartTV") when it tells YouTube's lounge, and the lounge tells the phone. It goes out as WestPlay.
+  var samsung = /Samsung(?:\+|%20| )SmartTV/gi;
+  function named(text) { return typeof text === 'string' ? text.replace(samsung, 'WestPlay') : text; }
+  function lounge(url) { return typeof url === 'string' && url.indexOf('/lounge/') >= 0; }
+  try {
+    var open = XMLHttpRequest.prototype.open;
+    var send = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function (method, url) {
+      this.westplayLounge = lounge(String(url));
+      if (this.westplayLounge) arguments[1] = named(String(url));
+      return open.apply(this, arguments);
+    };
+    XMLHttpRequest.prototype.send = function (body) {
+      return send.call(this, this.westplayLounge ? named(body) : body);
+    };
+    var fetched = window.fetch;
+    if (fetched) {
+      window.fetch = function (input, init) {
+        var url = typeof input === 'string' ? input : input && input.url;
+        if (lounge(url)) {
+          if (typeof input === 'string') input = named(input);
+          if (init && typeof init.body === 'string') init = Object.assign({}, init, { body: named(init.body) });
+        }
+        return fetched.call(this, input, init);
+      };
+    }
+  } catch (error) {}
+  function silence() {
+    var all = document.querySelectorAll('video,audio');
+    for (var i = 0; i < all.length; i++) all[i].muted = true;
+  }
+  document.addEventListener('play', function (event) { if (event.target) event.target.muted = true; }, true);
+  setInterval(silence, 150);
+  // The video's state on the address (`?wp=<1 paused or 0 playing>.<seconds>`, no page load): WestPlay sees nothing
+  // else of this window, and the phone's pausing, playing and seeking reach the truck's player by it.
+  setInterval(function () {
+    var video = document.querySelector('video');
+    if (!video) return;
+    try {
+      var mark = (video.paused ? '1' : '0') + '.' + (Math.round(video.currentTime * 10) / 10);
+      var address = new URL(location.href);
+      if (address.searchParams.get('wp') === mark) return;
+      address.searchParams.set('wp', mark);
+      history.replaceState(history.state, '', address.pathname + address.search + address.hash);
+    } catch (error) {}
+  }, 500);
+})();"#;
+
+/// The state the cast window's script marks on its own address (`?wp=<1 paused or 0 playing>.<seconds>`, set with
+/// `history.replaceState`): the one way the page's state reaches WestPlay, as its address is all WestPlay can see.
+fn cast_mark(url: &tauri::Url) -> Option<(bool, f64)> {
+    let value = url.query_pairs().find(|(name, _)| name == "wp")?.1.into_owned();
+    let (paused, time) = value.split_once('.')?;
+    let time = time.parse::<f64>().ok().filter(|time| time.is_finite() && *time >= 0.0)?;
+    Some((paused == "1", time))
+}
+
+/// The address as the TV page itself has it: without the mark above.
+fn without_cast_mark(url: &tauri::Url) -> String {
+    let mut plain = url.clone();
+    let kept: Vec<(String, String)> =
+        url.query_pairs().filter(|(name, _)| name != "wp").map(|(name, value)| (name.into_owned(), value.into_owned())).collect();
+    if kept.is_empty() {
+        plain.set_query(None);
+    } else {
+        plain.query_pairs_mut().clear().extend_pairs(kept.iter().map(|(name, value)| (name.as_str(), value.as_str())));
+    }
+    plain.to_string()
+}
+
+/// What the phone does to the video, as the cast window shows it, turned into what the truck's player is to do.
+#[derive(Default)]
+struct CastMirror {
+    paused: Option<bool>,
+    time: f64,
+    at: Option<std::time::Instant>,
+}
+
+impl CastMirror {
+    /// `Some((paused, seconds, seek))` when the truck's player is to pause or play, or (`seek`) to move to `seconds`:
+    /// the phone paused or played, or moved within the video. Not the video's own running on.
+    fn update(&mut self, paused: bool, time: f64) -> Option<(bool, f64, bool)> {
+        let now = std::time::Instant::now();
+        // A video that hasn't started (paused at its start) says nothing: the truck's player is already loading it.
+        if self.paused.is_none() && paused {
+            self.paused = Some(true);
+            self.time = time;
+            self.at = Some(now);
+            return None;
+        }
+        let expected = match (self.paused, self.at) {
+            (Some(false), Some(at)) => self.time + now.duration_since(at).as_secs_f64(),
+            (Some(true), _) => self.time,
+            _ => time,
+        };
+        let changed = self.paused != Some(paused);
+        let jumped = self.paused.is_some() && (time - expected).abs() > 2.5;
+        self.paused = Some(paused);
+        self.time = time;
+        self.at = Some(now);
+        (changed || jumped).then_some((paused, time, jumped))
+    }
+}
+
+/// The video the TV page plays, from its address (`https://www.youtube.com/tv#/watch?...&v=<id>`): `None` before one
+/// plays. An id is 11 letters, digits, `-` and `_`: nothing else passes (it goes into a message to the page).
+fn cast_video_id(url: &tauri::Url) -> Option<String> {
+    let query = url.fragment()?.split_once('?')?.1;
+    let video = query.split('&').find_map(|pair| pair.strip_prefix("v="))?;
+    (video.len() == 11 && video.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')).then(|| video.to_string())
+}
+
+/// Follows the cast window while it's open: the address it's on goes to the log when it changes (the TV page puts
+/// what it plays in its address, `#/watch?...&v=<id>`), the video it plays goes to the truck's screen, and the phone's
+/// pausing, playing and seeking (marked on the address by the window's script) go to the truck's player.
+fn watch_cast_address(app: AppHandle) {
+    let _ = std::thread::Builder::new().name("westplay-cast-address".into()).spawn(move || {
+        let mut last = String::new();
+        let mut video: Option<String> = None;
+        let mut mirror = CastMirror::default();
+        loop {
+            let Some(window) = app.get_webview_window("cast") else { break };
+            if let Ok(url) = window.url() {
+                let plain = without_cast_mark(&url);
+                if plain != last {
+                    westplay_host::log!("[cast] page: {plain}");
+                    last = plain;
+                }
+                if let Some(id) = cast_video_id(&url)
+                    && video.as_deref() != Some(id.as_str())
+                {
+                    westplay_host::log!("[cast] the phone chose a video: {id}");
+                    video = Some(id.clone());
+                    mirror = CastMirror::default();
+                    if let Ok(mut slot) = westplay_host::CAST_VIDEO.lock() {
+                        *slot = Some(id);
+                    }
+                    if let Some(open) = app.try_state::<WestplayOpen>() {
+                        open.0.request(true);
+                    }
+                }
+                if video.is_some()
+                    && let Some((paused, time)) = cast_mark(&url)
+                    && let Some(change) = mirror.update(paused, time)
+                    && let Ok(mut slot) = westplay_host::CAST_STATE.lock()
+                {
+                    *slot = Some(change);
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_millis(500));
+        }
+    });
+}
+
+/// A phone cast to WestPlay (`pairing`: what it sent, `pairingCode=...&theme=cl&dialLaunch=watch`): YouTube's TV page
+/// opens with it in a window of its own, as it does on a TV, and the phone pairs with it. A test: it plays in this
+/// window, not yet on the truck's screen.
+fn open_cast_window(app: &AppHandle, pairing: &str) {
+    // The phone's words go into an address: only the characters a pairing request has are let through.
+    if pairing.is_empty() || !pairing.chars().all(|c| c.is_ascii_alphanumeric() || "=&_%.-".contains(c)) {
+        westplay_host::log!("[cast] a launch that isn't a pairing request, not opened");
+        return;
+    }
+    let address = format!("https://www.youtube.com/tv?{pairing}");
+    if let Some(window) = app.get_webview_window("cast") {
+        let _ = window.eval(&format!("window.location.replace('{address}')"));
+        if CAST_WINDOW_SHOWN {
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+        return;
+    }
+    let Ok(url) = address.parse::<tauri::Url>() else { return };
+    match WebviewWindowBuilder::new(app, "cast", WebviewUrl::External(url))
+        .title("WestPlay cast")
+        .decorations(CAST_WINDOW_SHOWN)
+        .skip_taskbar(!CAST_WINDOW_SHOWN)
+        .always_on_bottom(!CAST_WINDOW_SHOWN)
+        .focused(CAST_WINDOW_SHOWN)
+        .resizable(CAST_WINDOW_SHOWN)
+        .shadow(CAST_WINDOW_SHOWN)
+        // Small, and so is the video YouTube sends it: the truck's screen plays it, this window only listens.
+        .inner_size(320.0, 180.0)
+        .user_agent(CAST_USER_AGENT)
+        .initialization_script(CAST_SCRIPT)
+        .build()
+    {
+        Ok(window) => {
+            // Its sound stops at the browser, not by a script: nothing the page does brings it back.
+            let _ = window.with_webview(|webview| westplay_host::mute_webview(&webview.controller()));
+            if !CAST_WINDOW_SHOWN
+                && let Ok(Some(monitor)) = window.primary_monitor()
+            {
+                // Off the screen but for its one corner pixel.
+                let (at, size) = (monitor.position(), monitor.size());
+                let _ = window.set_position(tauri::PhysicalPosition::new(
+                    at.x + size.width as i32 - 1,
+                    at.y + size.height as i32 - 1,
+                ));
+            }
+            westplay_host::log!("[cast] YouTube's TV page opened for the phone");
+            watch_cast_address(app.clone());
+        }
+        Err(error) => westplay_host::log!("[cast] couldn't open YouTube's TV page: {error}"),
+    }
+}
+
 fn main() {
+    // WestPlay Lite: only smooth scrolling off. (--renderer-process-limit and --enable-low-end-device-mode applied to
+    // every WebView2 of the process, the host's hidden cab, Spotify and YouTube pages included.)
+    if std::env::var_os("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").is_none() {
+        #[allow(unused_unsafe)]
+        unsafe {
+            std::env::set_var(
+                "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+                "--disable-smooth-scrolling",
+            );
+        }
+    }
     // Started as administrator only to copy the plugin into the game (setup asked for it): that, and done.
     let args: Vec<String> = std::env::args().collect();
     if let Some(code) = westplay_setup::plugin::run_as_administrator_copy(&args) {
@@ -239,7 +535,6 @@ fn main() {
             key_name,
             setup::setup_state,
             setup::game_running,
-            setup::prepare_maps_again,
             setup::choose_game_folder,
             setup::check_game,
             setup::install_into_game,
@@ -262,7 +557,12 @@ fn main() {
             }
             let config_dir = app.path().app_config_dir()?;
             let file = SettingsFile::in_dir(&config_dir);
-            let shared = Arc::new(SharedSettings::new(file.load()));
+            let loaded = file.load();
+            // WestPlay Lite: before the host's browsers start, which take the priority from here.
+            westplay_host::graphics::set_game_first(loaded.graphics.game_first);
+            app.manage(CastState::default());
+            set_cast(app.handle(), loaded.graphics.youtube_cast);
+            let shared = Arc::new(SharedSettings::new(loaded));
             let setup = SetupStore::load(&config_dir, app.handle());
             setup::watch_installed_mods(&setup);
             let customize = customize::Customize {
@@ -282,16 +582,53 @@ fn main() {
             app.manage(setup);
             app.manage(std::sync::Mutex::new(host));
             update::watch(app.handle());
+            // WestPlay Lite: the companion's X puts it in the tray (the icons by the clock) and the host goes on.
+            let open = MenuItem::with_id(app, "open", "Open WestPlay", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "Quit WestPlay", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&open, &quit])?;
+            let mut tray = TrayIconBuilder::new()
+                .menu(&menu)
+                .tooltip("WestPlay")
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "open" => show_companion(app),
+                    "quit" => app.exit(0),
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } = event {
+                        show_companion(tray.app_handle());
+                    }
+                });
+            if let Some(icon) = app.default_window_icon() {
+                tray = tray.icon(icon.clone());
+            }
+            tray.build(app)?;
             Ok(())
         })
         .build(tauri::generate_context!())
         .expect("failed to build the WestPlay app");
 
-    app.run(|app, event| {
-        if let RunEvent::Exit = event {
-            stop_host(app);
+    app.run(|app, event| match event {
+        // The X of the companion window hides it to the tray; "Quit WestPlay" there ends the app.
+        RunEvent::WindowEvent { label, event: WindowEvent::CloseRequested { api, .. }, .. } if label == "main" => {
+            api.prevent_close();
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.hide();
+            }
         }
+        RunEvent::Exit => stop_host(app),
+        _ => {}
     });
+}
+
+/// Brings the companion window back from the tray.
+fn show_companion(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.unminimize();
+        let _ = window.set_focus();
+    }
 }
 
 /// Stops the host, so its WebView2 shuts down cleanly with the app (it quitting, or an update's installer

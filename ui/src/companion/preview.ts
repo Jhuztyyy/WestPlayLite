@@ -82,8 +82,8 @@ let settings: Settings = {
   },
   screen: { truckStrip: 'auto' },
   look: { wallpaper: null, iconSet: null, iconStyle: 'auto' },
-  graphics: { gpu: null },
-  sound: { equalizer: { bass: 0, mid: 0, treble: 0 }, custom: false, coach: 'driver' },
+  graphics: { gpu: null, gameFirst: false, youtubeCast: false },
+  sound: { equalizer: { bass: 0, mid: 0, treble: 0 }, custom: false, coach: 'driver', cabSpeakers: false },
   map: { buildings: true, roads: true, fast: false },
   language: null,
 }
@@ -348,11 +348,6 @@ export function answer(command: string, args?: Record<string, unknown>): Promise
     case 'set_westplay_open':
       westplayOpen = Boolean(args?.open)
       return later(undefined, 200)
-    case 'prepare_maps_again':
-      console.info('prepare_maps_again', args)
-      // The played profile's map made anew (the status's ticking carries it on).
-      map = { state: 'building', done: 0, stage: 'reading' }
-      return later(undefined, 300)
     case 'youtube_check':
     case 'spotify_check':
     case 'apple_music_check':

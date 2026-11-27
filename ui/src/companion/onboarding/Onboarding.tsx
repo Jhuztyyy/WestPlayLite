@@ -1,5 +1,4 @@
 import { type ReactNode, useContext, useEffect, useRef, useState } from 'react'
-import { hvtMapMessage } from '../../cabin/maps/blockedMap'
 import {
   checkGame,
   defaultMapAddress,
@@ -25,7 +24,6 @@ import {
   youtubeSignOut,
 } from '../useHostStatus'
 import { DEFAULT_KEY, type SettingsState } from '../useSettings'
-import { memoryNote } from '../pages/page'
 import { companionWords } from '../pages/words'
 import '../room/room.css'
 import { type Banner, GlassCursor, type Pose, TruckScreen } from '../room/TruckScreen'
@@ -36,7 +34,6 @@ import {
   Cross,
   Group,
   KeyChooser,
-  MapProgress,
   Note,
   Panel,
   ProfileRow,
@@ -53,7 +50,6 @@ import {
   RoomText,
   useChecking,
   useGameRunning,
-  useGlidingProgress,
   useSignOut,
   useWords,
   WordsContext,
@@ -69,7 +65,7 @@ import {
   useTour,
 } from '../room/screen'
 import { useDemo } from '../room/useDemo'
-import { chosenLanguage, count, list, percent, wordsFor } from './words'
+import { chosenLanguage, count, list, wordsFor } from './words'
 
 const STEPS = [
   'welcome',
@@ -77,7 +73,6 @@ const STEPS = [
   'check',
   'speed',
   'install',
-  'map',
   'controls',
   'accounts',
   'spotify',
@@ -92,7 +87,6 @@ const POSES: Record<StepId, Pose> = {
   check: 'side',
   speed: 'side',
   install: 'side',
-  map: 'side',
   controls: 'side',
   accounts: 'side',
   spotify: 'side',
@@ -227,7 +221,7 @@ export function Onboarding({
   }, [mapKey, demo.ready, send])
 
   // The mouse turns the screen a little.
-  const tilt = (event: React.PointerEvent) => {
+  const _tilt = (event: React.PointerEvent) => { void _tilt;
     const box = root.current?.getBoundingClientRect()
     if (!box) return
     root.current?.style.setProperty('--tilt-x', (((event.clientX - box.left) / box.width) * 2 - 1).toFixed(3))
@@ -246,7 +240,7 @@ export function Onboarding({
       lang={words.locale}
       data-power={powered || undefined}
       data-finishing={finishing || undefined}
-      onPointerMove={tilt}
+      /* Low-End Mode: tilt disabled */
     >
       <TruckScreen
         frame={demo.frame}
@@ -302,7 +296,6 @@ export function Onboarding({
                 back={back}
               />
             )}
-            {step === 'map' && <MapStep status={status} next={next} back={back} />}
             {step === 'controls' && <Controls settings={settings} next={next} back={back} />}
             {step === 'accounts' && <Accounts status={status} next={next} back={back} />}
             {step === 'spotify' && <ServiceSignIn service="spotify" status={status} next={next} back={back} />}
@@ -777,86 +770,6 @@ function Install({
   )
 }
 
-function MapStep({ status, next, back }: { status: HostStatus | null; next(): void; back?: () => void }) {
-  const map = status?.map ?? { state: 'unknown' as const }
-  const building = map.state === 'building' ? map : null
-  const shown = useGlidingProgress(building?.done ?? null, building?.stage ?? null)
-  // Seen building on this visit: once it's ready, its stages stay up, all ticked.
-  const [watched, setWatched] = useState(false)
-  if (building && !watched) setWatched(true)
-  const settled = map.state === 'ready' || map.state === 'notAllowed' || map.state === 'failed'
-  const { words, code } = useContext(WordsContext)
-  const w = words.map
-  // The HVT message, its two sentences as the banner's title and line.
-  const [hvtTitle, hvtText] = [
-    ...new Intl.Segmenter(words.locale, { granularity: 'sentence' }).segment(hvtMapMessage(code)),
-  ].map((part) => part.segment.trim())
-  useScreenAt(
-    'maps',
-    GLOW.maps,
-    map.state === 'building'
-      ? {
-          title: w.banners.building,
-          detail: `${w.stages[map.stage].now} · ${percent(words, shown)}`,
-          progress: shown,
-        }
-      : map.state === 'ready'
-        ? banner(w.banners.ready)
-        : map.state === 'waitingForGame'
-          ? banner(w.banners.waiting)
-          : map.state === 'waitingForMemory'
-            ? banner(companionWords(code).map.memory.banner)
-            : map.state === 'notAllowed'
-              ? { title: hvtTitle, detail: hvtText }
-              : map.state === 'failed'
-                ? banner(w.banners.failed)
-                : { title: w.banners.getting, busy: true },
-  )
-
-  useTour(
-    map.state === 'ready'
-      ? [
-          { tap: ON_SCREEN.zoomOut, then: 700 },
-          { tap: ON_SCREEN.zoomOut, then: 700 },
-          { tap: ON_SCREEN.zoomOut, then: 3200 },
-          { tap: ON_SCREEN.zoomIn, then: 700 },
-          { tap: ON_SCREEN.zoomIn, then: 700 },
-          { tap: ON_SCREEN.zoomIn, then: 3600 },
-        ]
-      : null,
-    1800,
-  )
-
-  return (
-    <Panel
-      place="side"
-      title={map.state === 'ready' ? w.titleReady : w.title}
-      sub={w.sub}
-      back={back}
-      action={
-        <Button onClick={next} disabled={!settled}>
-          {words.continue}
-        </Button>
-      }
-    >
-      {(building || (watched && map.state === 'ready')) && (
-        <MapProgress shown={shown} stage={building?.stage ?? null} finished={map.state === 'ready'} />
-      )}
-      {map.state === 'failed' && <Note tone="bad">{map.error}</Note>}
-      {map.state === 'waitingForGame' && (
-        <Note>
-          <b>{w.waiting.title}</b> {w.waiting.text}
-        </Note>
-      )}
-      {map.state === 'waitingForMemory' && (
-        <Note>
-          <b>{companionWords(code).map.memory.note.title}</b>{' '}
-          {memoryNote(companionWords(code), words.locale, map.needed, map.free)}
-        </Note>
-      )}
-    </Panel>
-  )
-}
 
 /**
  * Before WestPlay is installed (its maps are drawn as soon as it is: `MapWatch`, the game set up): whether they're
@@ -870,7 +783,7 @@ function Speed({ settings, next, back }: { settings: SettingsState; next(): void
   const w = words.speed
   const cw = companionWords(code).map
   const [read, setRead] = useState(false)
-  useScreenAt('maps', GLOW.maps, null)
+  useScreenAt('dashboard', GLOW.maps, null)
   return (
     <Panel
       place="side"
@@ -912,8 +825,6 @@ function Controls({ settings, next, back }: { settings: SettingsState; next(): v
   // Holding the key: the player taps one app, then another.
   useTour([
     ...openAndClose('music', GLOW.music),
-    ...openAndClose('weather', GLOW.weather),
-    ...openAndClose('maps', GLOW.maps),
   ])
   return (
     <Panel

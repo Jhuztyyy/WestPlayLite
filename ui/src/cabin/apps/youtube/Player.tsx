@@ -22,6 +22,7 @@ import {
   command,
   followArea,
   leavePlayer,
+  isCast,
   nextVideo,
   openChannel,
   play,
@@ -129,9 +130,9 @@ function OpenPlayer() {
     return () => clearTimeout(timer)
   }, [controls, playing, queue, menu])
 
-  // One ends: the next plays, as YouTube's autoplay.
+  // One ends: the next plays, as YouTube's autoplay (not a cast one: its next is the phone's, it comes as a cast).
   useEffect(() => {
-    if (!ended || current?.live) return
+    if (!ended || current?.live || isCast()) return
     const next = nextVideo()
     if (next) play(next)
   }, [ended, current])
@@ -351,11 +352,10 @@ function usePosition(): { time: number; duration: number } {
   const playing = state?.state === 1
   useEffect(() => {
     if (!playing) return
-    let frame = requestAnimationFrame(function tick() {
-      setNow(performance.now())
-      frame = requestAnimationFrame(tick)
-    })
-    return () => cancelAnimationFrame(frame)
+    // WestPlay Lite: four times a second, not every display frame (the screen reaches the game at 15 a second, and
+    // each tick re-draws the bar and the times).
+    const timer = setInterval(() => setNow(performance.now()), 250)
+    return () => clearInterval(timer)
   }, [playing])
   if (!state) return { time: 0, duration: 0 }
   const run = playing ? Math.max(0, (now - at) / 1000) : 0

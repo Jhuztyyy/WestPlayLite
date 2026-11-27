@@ -1431,7 +1431,7 @@ dependencies = [
  "libc",
  "percent-encoding",
  "pin-project-lite",
- "socket2",
+ "socket2 0.6.5",
  "system-configuration",
  "tokio",
  "tower-service",
@@ -3367,6 +3367,16 @@ checksum = "f9395f0f0eee849a9b707b2f06bb92a6a422090e2123bb2ef8e87a0e61892a8e"
 
 [[package]]
 name = "socket2"
+version = "0.5.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e22376abed350d73dd1cd119b57ffccad95b4e585a7cda43e286245ce23c0678"
+dependencies = [
+ "libc",
+ "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "socket2"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
@@ -4011,7 +4021,7 @@ dependencies = [
  "libc",
  "mio",
  "pin-project-lite",
- "socket2",
+ "socket2 0.6.5",
  "windows-sys 0.61.2",
 ]
 
@@ -4574,23 +4584,30 @@ checksum = "a28ac98ddc8b9274cb41bb4d9d4d5c425b6020c50c46f25559911905610b4a88"
 
 [[package]]
 name = "westplay-app"
-version = "2.4.1"
+version = "1.0.0"
 dependencies = [
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-updater",
+ "westplay-cast",
  "westplay-host",
  "westplay-mapdata",
  "westplay-setup",
 ]
 
 [[package]]
-name = "westplay-host"
-version = "2.4.1"
+name = "westplay-cast"
+version = "1.0.0"
 dependencies = [
- "base64 0.22.1",
+ "socket2 0.5.10",
+]
+
+[[package]]
+name = "westplay-host"
+version = "1.0.0"
+dependencies = [
  "image",
  "lofty",
  "serde",
@@ -4608,7 +4625,7 @@ dependencies = [
 
 [[package]]
 name = "westplay-mapdata"
-version = "2.4.1"
+version = "1.0.0"
 dependencies = [
  "aes",
  "cbc",
@@ -4620,7 +4637,7 @@ dependencies = [
 
 [[package]]
 name = "westplay-maps"
-version = "2.4.1"
+version = "1.0.0"
 dependencies = [
  "mimalloc",
  "serde_json",
@@ -4632,7 +4649,7 @@ dependencies = [
 
 [[package]]
 name = "westplay-plugin"
-version = "2.4.1"
+version = "1.0.0"
 dependencies = [
  "iced-x86",
  "minhook",
@@ -4642,7 +4659,7 @@ dependencies = [
 
 [[package]]
 name = "westplay-probe"
-version = "2.4.1"
+version = "1.0.0"
 dependencies = [
  "westplay-shared",
  "windows",
@@ -4650,7 +4667,7 @@ dependencies = [
 
 [[package]]
 name = "westplay-setup"
-version = "2.4.1"
+version = "1.0.0"
 dependencies = [
  "flate2",
  "png 0.18.1",
@@ -4664,7 +4681,7 @@ dependencies = [
 
 [[package]]
 name = "westplay-shared"
-version = "2.4.1"
+version = "1.0.0"
 dependencies = [
  "serde",
  "windows",

@@ -393,6 +393,15 @@ fn watch(
     played: &PlayedMap,
     builds: &map_process::Builds,
 ) {
+    // WestPlay Lite has no map: nothing is built (minutes of processor and gigabytes of disk each time) and none is
+    // loaded. The thread stays, asleep, so its channel stays open and its owner needs no change.
+    let parked = true;
+    if parked {
+        while !builds.stopped() {
+            std::thread::sleep(std::time::Duration::from_millis(500));
+        }
+        return;
+    }
     // Each set-up game's own folder in Documents, looked for once a game.
     let mut documents_of: HashMap<Kind, Option<PathBuf>> = HashMap::new();
     let mut sent: Option<MapUpdate> = None;

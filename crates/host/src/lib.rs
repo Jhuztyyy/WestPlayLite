@@ -34,6 +34,7 @@ mod gpu_contention;
 pub mod settings;
 mod signin;
 pub mod speakers;
+mod smtc;
 mod spotify;
 pub mod startup;
 mod typing;
@@ -208,6 +209,29 @@ impl OpenRequest {
         }
     }
 }
+
+/// WestPlay Lite: mutes a WebView2 of the app's own (the cast window) where its sound leaves for the speakers,
+/// whatever its page does with sound (a script can only mute the media elements it finds).
+pub fn mute_webview(controller: &webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Controller) {
+    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2_8;
+    use windows::core::Interface;
+    // SAFETY: the controller is alive for the call; plain values.
+    unsafe {
+        if let Ok(webview) = controller.CoreWebView2()
+            && let Ok(webview8) = webview.cast::<ICoreWebView2_8>()
+        {
+            let _ = webview8.SetIsMuted(true);
+        }
+    }
+}
+
+/// WestPlay Lite: the video a phone cast to WestPlay (westplay-cast), its YouTube id, for the host to pass on to the
+/// page, which plays it. Set from any thread; the host takes it.
+pub static CAST_VIDEO: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
+
+/// WestPlay Lite: what the phone did to the video it cast (paused or played, the second, whether it moved within the
+/// video), for the host to pass on to the page, which does it to the player. Set from any thread; the host takes it.
+pub static CAST_STATE: std::sync::Mutex<Option<(bool, f64, bool)>> = std::sync::Mutex::new(None);
 
 pub struct Config {
     pub width: u32,
@@ -527,6 +551,13 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
         if let Some(open) = config.open_request.take() {
             let _ = webview.post_json(&westplay_message(open));
         }
+        // WestPlay Lite: a video a phone cast goes to the page (the id was checked: letters, digits, - and _).
+        if let Some(video) = CAST_VIDEO.lock().ok().and_then(|mut slot| slot.take()) {
+            let _ = webview.post_json(&format!("{{\"type\":\"castVideo\",\"video\":\"{video}\"}}"));
+        }
+        if let Some((paused, time, seek)) = CAST_STATE.lock().ok().and_then(|mut slot| slot.take()) {
+            let _ = webview.post_json(&format!("{{\"type\":\"castState\",\"paused\":{paused},\"time\":{time:.1},\"seek\":{seek}}}"));
+        }
         // The companion's YouTube, Spotify and Apple Music sign-ins or sign-outs, as the cab's would be (or only
         // running it, to know whether it's signed in).
         if let Some(action) = config.accounts.youtube.take()
@@ -612,10 +643,16 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
             // The cab on another GPU than it's drawn on (the game's, or the player's choice): WebView2 is
             // started again on it.
             let cab_wanted = graphics::choose(chosen_gpu.as_deref(), wanted, cab_gpu, &adapters);
-            if let (Some(now), Some(next)) = (cab_gpu, cab_wanted)
-                && !graphics::same(now, next)
-            {
-                let name = graphics::name_of(next, &adapters).unwrap_or_default();
+            // Automatic (`None`) leaves WebView2 on its default GPU, so a change to or from a chosen GPU counts.
+            let cab_moves = match (cab_gpu, cab_wanted) {
+                (Some(now), Some(next)) => !graphics::same(now, next),
+                (None, None) => false,
+                _ => true,
+            };
+            if cab_moves {
+                let name = cab_wanted
+                    .and_then(|luid| graphics::name_of(luid, &adapters))
+                    .unwrap_or_else(|| "Windows' default GPU".to_string());
                 log!("the cab moves to {name}");
                 gpu_changed = true;
                 break;
@@ -1022,9 +1059,24 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                     }
                 }
                 Some(PageMessage::Player { command }) => {
-                    if music_player.is_none() && matches!(command, music_folder::Command::Pause) {
-                        // Nothing to pause: Player's player isn't running.
-                    } else if let Some(player) = start_music_player(&mut music_player, &stage, &config, music_dir.as_deref()) {
+                    if music_player.is_none() && smtc::current_playback(false).is_some() {
+                        match &command {
+                            music_folder::Command::Play { .. } | music_folder::Command::Pause => {
+                                smtc::send_transport(smtc::Transport::PlayPause);
+                                continue;
+                            }
+                            music_folder::Command::Next => {
+                                smtc::send_transport(smtc::Transport::Next);
+                                continue;
+                            }
+                            music_folder::Command::Previous => {
+                                smtc::send_transport(smtc::Transport::Previous);
+                                continue;
+                            }
+                            _ => {}
+                        }
+                    }
+                    if let Some(player) = start_music_player(&mut music_player, &stage, &config, music_dir.as_deref()) {
                         let _ = player.command(&command);
                     }
                 }
@@ -1513,7 +1565,8 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                             if let Some(line) = music_player_log.heard(heard) {
                                 log!("{line}");
                             }
-                            let message = music_folder::playback_message(playback.as_deref());
+                            let effective = playback.or_else(|| smtc::current_playback(false));
+                            let message = music_folder::playback_message(effective.as_deref());
                             let _ = webview.post_json(&message);
                             music_player_playback = Some(message);
                         }
@@ -1680,7 +1733,7 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
             let head = speakers::Head::of(telemetry).turned(turn);
             // The truck's speakers: a coach's driver's or its passengers' as the companion's setting chooses; its
             // parts' for a truck whose speakers come with them (none until they're found), else its own.
-            let truck_speakers = match (&coach_sets, &part_speakers) {
+            let truck_speakers_all = match (&coach_sets, &part_speakers) {
                 (Some((driver, passengers)), _) => Some(match config.settings.get().sound.coach {
                     settings::CoachSpeakers::Driver => driver.as_slice(),
                     settings::CoachSpeakers::Passengers => passengers.as_slice(),
@@ -1689,6 +1742,8 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
                 _ if speakers::by_parts(truck.id.as_str()) => None,
                 _ => speakers::in_truck(truck.id.as_str()),
             };
+            // WestPlay Lite: positioning the sound on the truck's speakers is the companion's "Truck speakers" switch.
+            let truck_speakers = if config.settings.get().sound.cab_speakers { truck_speakers_all } else { None };
             if let Some(player) = &youtube {
                 let _ = player.cab(truck_speakers, head, outside, distance, equalizer, spectrum);
             }
@@ -1721,7 +1776,9 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
             }
         }
 
-        if last_telemetry_post.elapsed() >= Duration::from_millis(50) {
+        // WestPlay Lite: five times a second (upstream's twenty): the cab's page uses the game's clock, lights and
+        // whether the truck moves, nothing that needs more, and each one wakes the page and its store.
+        if last_telemetry_post.elapsed() >= Duration::from_millis(200) {
             last_telemetry_post = Instant::now();
             let plugin = &bridge.bridge().plugin;
             // A write the game never finished (it crashed in the middle) reads as nothing: nothing to send. A
@@ -2039,8 +2096,9 @@ fn has_module(pid: u32, names: &[&str]) -> bool {
     }
 }
 
-/// How often the players around the player under TruckersMP may go to the page.
-const NEARBY_POST_EVERY: Duration = Duration::from_millis(33);
+/// How often the players around the player under TruckersMP may go to the page (WestPlay Lite: once a second, it has
+/// no map to draw them on).
+const NEARBY_POST_EVERY: Duration = Duration::from_millis(1000);
 
 /// `{"type":"nearby","server":…,"local":…,"players":[[id, x, z, heading], …]}`: TruckersMP's players around
 /// the player (`server` its game server's id, `local` the player's own number; `null` for none: not under

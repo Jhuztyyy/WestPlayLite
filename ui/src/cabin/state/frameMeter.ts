@@ -66,8 +66,17 @@ export function meterFrames(): () => void {
     screens = {}
     return report
   }
-  follow(useLive.getState().telemetry !== null)
-  const stop = useLive.subscribe((live) => follow(live.telemetry !== null))
+  // WestPlay Lite: counting frames keeps the page drawing on every display frame, only for the log's numbers:
+  // off unless the log is wanted (in the cab's console: localStorage.westplayMeter = '1').
+  const wanted = () => {
+    try {
+      return window.localStorage.getItem('westplayMeter') === '1'
+    } catch {
+      return false
+    }
+  }
+  follow(wanted() && useLive.getState().telemetry !== null)
+  const stop = useLive.subscribe((live) => follow(wanted() && live.telemetry !== null))
   return () => {
     stop()
     follow(false)

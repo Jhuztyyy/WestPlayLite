@@ -116,7 +116,7 @@ export const strings: Strings = {
   },
   weatherApp: { ...spain.weatherApp, unavailable: 'El clima aparece mientras el juego está abierto.' },
   settings: { ...spain.settings, showAlbumArt: 'Mostrar portadas' },
-  apps: { ...spain.apps, weather: 'Clima', settings: 'Configuración' },
+  apps: { ...spain.apps, settings: 'Configuración' },
   safari: {
     ...spain.safari,
     searchOrEnter: 'Buscar o ingresar nombre del sitio web',

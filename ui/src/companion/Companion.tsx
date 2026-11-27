@@ -11,7 +11,6 @@ import { Accounts } from './pages/Accounts'
 import { Controls } from './pages/Controls'
 import { Customize } from './pages/Customize'
 import { type MapProgress, useMapProgress } from './mapProgress'
-import { MapPage } from './pages/MapPage'
 import { screenState } from './pages/page'
 import { ScreenPage } from './pages/ScreenPage'
 import { Setup } from './pages/Setup'
@@ -92,7 +91,7 @@ export function Companion() {
 
 const SECTIONS: SectionId[][] = [
   ['screen', 'controls', 'customize'],
-  ['accounts', 'map'],
+  ['accounts'],
   ['setup', 'about'],
   ['support'],
 ]
@@ -355,7 +354,6 @@ function Room({
             {roomShown && section === 'controls' && <Controls {...page} />}
             {roomShown && section === 'customize' && <Customize {...page} />}
             {roomShown && section === 'accounts' && <Accounts {...page} />}
-            {roomShown && section === 'map' && <MapPage {...page} />}
             {roomShown && section === 'setup' && <Setup {...page} />}
             {roomShown && section === 'about' && <About {...page} />}
             {roomShown && section === 'support' && <Support {...page} />}
@@ -550,7 +548,8 @@ function mapValue(status: HostStatus | null, progress: MapProgress, cw: Companio
 function useVersion(): string {
   const [version, setVersion] = useState('')
   useEffect(() => {
-    appVersion().then(setVersion, () => setVersion(''))
+    // WestPlay Lite 1.0.0, from WestPlay 2.4.1.
+    appVersion().then((version) => setVersion(`${version} (2.4.1)`), () => setVersion(''))
   }, [])
   return version
 }

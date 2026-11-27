@@ -1,0 +1,13 @@
+[package]
+name = "westplay-cast"
+description = "WestPlay Lite: makes the truck screen show up as a cast target (SSDP + DIAL) and tells what a phone asks of it"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+socket2 = { version = "0.5", features = ["all"] }
+
+[lints]
+workspace = true

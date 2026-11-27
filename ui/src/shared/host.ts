@@ -184,6 +184,10 @@ export type HostMessage =
   | { type: 'weather'; weather: GameWeather | null }
   /** How YouTube's player plays (`null`: YouTube isn't running). */
   | { type: 'youtube'; state: YouTubeState | null }
+  /** WestPlay Lite: a video a phone cast to WestPlay (westplay-cast): the YouTube app plays it. */
+  | { type: 'castVideo'; video: string }
+  /** WestPlay Lite: what the phone did to it: paused or played, at `time`, `seek`: moved to it. */
+  | { type: 'castState'; paused: boolean; time: number; seek: boolean }
   /** YouTube's answer to the page's question `id` (a `youtube` command with an `id`). */
   | ({ type: 'youtubeAnswer'; id: number } & YouTubeAnswer)
   /** Whether the game's window shows (`false`: minimised, or on another desktop; in front or not: Lossless

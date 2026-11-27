@@ -21,15 +21,8 @@ import { playOrPause as playOrPausePlayer, skip as skipPlayer, usePlayer, usePla
 import type { MediaAction, MediaSource } from '../../shared/media'
 import { useLook } from '../state/hooks'
 import { go, useCabin } from '../state/store'
-import { useMapData } from '../maps/mapData'
-import { useLive } from '../state/store'
 import { useText } from '../state/text'
-import { nearestCity } from './destination'
 import { useNowPlaying } from './useNowPlaying'
-import { weatherView } from './weather'
-import { WeatherGlyph } from './WeatherGlyph'
-import { EMPTY, useDestinationView, useGuided } from './widgetState'
-import { cabClock } from '../../shared/host'
 
 /**
  * Now Playing: what plays, the video YouTube plays first (VideoWidget), then the Spotify app's music, then
@@ -210,69 +203,5 @@ function MusicWidget({
         </button>
       </div>
     </article>
-  )
-}
-
-/**
- * Where the truck is headed, our "live activity" (destination.ts): the job's pickup and then its delivery
- * (deadline and distance left), or where the game's route ends; folded away without either, as the
- * guidance card comes and goes.
- */
-export function DestinationWidget() {
-  const view = useDestinationView()
-  const shown = useCabin((state) => state.dashboardWidgets.destination) && view !== EMPTY
-  return (
-    <div className={`widget-slot${shown ? ' open' : ''}`}>
-      {shown && (
-        <article className="widget glass lg-system job">
-          <div className="kicker">{view.kicker}</div>
-          <div className="destination">{view.title}</div>
-          {view.subtitle && <div className="place">{view.subtitle}</div>}
-          <div className={`deadline${view.late ? ' late' : ''}`}>{view.detail}</div>
-        </article>
-      )}
-    </div>
-  )
-}
-
-/** How many widgets the column holds at most: the weather comes in only where there's room. */
-const COLUMN = 3
-
-/**
- * The weather where the truck is, as CarPlay's weather widget (weather.ts): the nearest city, the weather
- * and its symbol. The column holds three widgets: it comes in where there's room (turn-by-turn, Now Playing
- * or the destination not showing: no route, no job, or turned off in Settings), as they come and go; and
- * not without the weather (no game, or one whose weather isn't read), or turned off itself.
- */
-export function WeatherWidget() {
-  const text = useText()
-  const labels = useMapData()?.labels
-  const widgets = useCabin((state) => state.dashboardWidgets)
-  const guided = useGuided()
-  const destination = useDestinationView()
-  const others = [guided, widgets.nowPlaying, widgets.destination && destination !== EMPTY].filter(Boolean).length
-  const room = widgets.weather && others < COLUMN
-  const weather = useLive((state) => state.weather)
-  const gameTime = useLive((state) => (state.telemetry ? cabClock(state.telemetry, state.clockShift) : 0))
-  const place = useLive((state) => {
-    const t = state.telemetry
-    return t && labels ? nearestCity([t.x, t.z], labels) : null
-  })
-  const view = weather ? weatherView(weather, gameTime, place, text) : null
-  return (
-    <div className={`widget-slot${room && view ? ' open' : ''}`}>
-      {view && (
-        <article
-          className="widget glass lg-system weather"
-          aria-label={[view.place, view.condition].filter(Boolean).join(', ')}
-        >
-          <div className="weather-text">
-            {view.place && <div className="place">{view.place}</div>}
-            <div className="condition">{view.condition}</div>
-          </div>
-          <WeatherGlyph symbol={view.symbol} size={84} />
-        </article>
-      )}
-    </div>
   )
 }

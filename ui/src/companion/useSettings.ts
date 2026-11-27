@@ -30,6 +30,10 @@ export interface Settings {
    * WestPlay picks (the game's). */
   graphics: {
     gpu: string | null
+    /** WestPlay Lite: run WestPlay below the game in Windows' priority (applies at the next start). */
+    gameFirst: boolean
+    /** WestPlay Lite: show the truck screen in a phone's cast list (logs what the phone asks; plays nothing yet). */
+    youtubeCast: boolean
   }
   /** The cab's sound: its Equalizer (the cab's own Settings) and which of a coach's speakers play (here, never in
    * the cab). */
@@ -37,6 +41,8 @@ export interface Settings {
     equalizer: Equalizer
     custom: boolean
     coach: CoachSpeakers
+    /** WestPlay Lite: position the sound on the truck's own speakers (costs processor time while driving). */
+    cabSpeakers: boolean
   }
   /** The cab's map: whether its buildings rise from it, and its bridges and ramps; and whether the maps are
    * prepared faster (every processor thread, up to 80% of the memory). */
