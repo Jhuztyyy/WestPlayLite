@@ -186,3 +186,33 @@ describe('connectHost', () => {
     disconnect()
   })
 })
+
+describe('a video a phone casts while the game is away', () => {
+  it('waits for the game, and plays when it is back', async () => {
+    const webview = fakeWebView()
+    vi.stubGlobal('window', { chrome: { webview: webview.bridge } })
+    vi.stubGlobal('location', { search: '' })
+    const items = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => items.get(key) ?? null,
+      setItem: (key: string, value: string) => void items.set(key, value),
+      removeItem: (key: string) => void items.delete(key),
+    })
+    const { connectHost } = await import('./store')
+    const { useYouTube } = await import('../apps/youtube/youtube')
+    const disconnect = connectHost(() => 0)
+
+    // The game's window is minimised: the phone's choice is kept, not played.
+    webview.send({ type: 'gameShown', shown: false })
+    webview.send({ type: 'castVideo', video: 'AAAAAAAAAAA' })
+    expect(useYouTube.getState().current).toBeNull()
+    // A later choice replaces it.
+    webview.send({ type: 'castVideo', video: 'BBBBBBBBBBB' })
+    expect(useYouTube.getState().current).toBeNull()
+
+    // The game back: the latest plays.
+    webview.send({ type: 'gameShown', shown: true })
+    expect(useYouTube.getState().current?.video).toBe('BBBBBBBBBBB')
+    disconnect()
+  })
+})

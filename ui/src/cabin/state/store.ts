@@ -364,6 +364,20 @@ export interface Nearby {
   at: number
 }
 
+/** WestPlay Lite: the game is away (paused with its menu up, or minimised), as apps/musicWithGame.ts has it. */
+function awayFromGame(live: { telemetry: { paused: boolean } | null; menuGone: boolean; gameShown: boolean }): boolean {
+  return ((live.telemetry?.paused ?? false) && !live.menuGone) || !live.gameShown
+}
+
+/** A video the phone cast while the game was away: it plays when the game is back. */
+let heldCast: string | null = null
+
+/** Opens the YouTube app on a video a phone cast, and plays it. */
+function startCast(video: string): void {
+  go({ type: 'openApp', app: 'youtube' })
+  playCast({ video, title: '', channel: '', avatar: null, thumbnail: null, duration: '', views: '', age: '', live: false })
+}
+
 export const useLive = create<LiveState>()(() => ({
   telemetry: null,
   truck: previewTruck(),
@@ -413,6 +427,14 @@ function previewLayout(): ScreenLayoutId | null {
  * (as the page connects, and whenever it opens or closes). Returns the unsubscribe function; call once at
  * startup. The power sequence follows the truck's electrics (and only changes when they change).
  */
+// The game back: the video the phone cast meanwhile plays.
+useLive.subscribe((live) => {
+  if (heldCast === null || awayFromGame(live)) return
+  const video = heldCast
+  heldCast = null
+  startCast(video)
+})
+
 export function connectHost(now: () => number = () => performance.now()): () => void {
   const stopMessages = subscribeHostMessages(receiveHostMessage(now))
   const report = () => postToHost({ type: 'westplay', open: !useCabin.getState().truckScreen })
@@ -511,12 +533,15 @@ function receiveHostMessage(now: () => number): (message: HostMessage) => void {
       case 'castVideo':
         // WestPlay Lite: what the phone chose (an 11-character id, as the host checked) plays in the YouTube app.
         if (/^[\w-]{11}$/.test(message.video)) {
-          go({ type: 'openApp', app: 'youtube' })
-          playCast({ video: message.video, title: '', channel: '', avatar: null, thumbnail: null, duration: '', views: '', age: '', live: false })
+          // The game paused or minimised: it waits for the game (the latest one), nothing starts while it's away.
+          if (awayFromGame(useLive.getState())) heldCast = message.video
+          else startCast(message.video)
         }
         break
       case 'castState':
-        // WestPlay Lite: the phone paused, played or moved within the video it cast: the YouTube player does too.
+        // WestPlay Lite: the phone paused, played or moved within the video it cast: the YouTube player does too,
+        // but not while the game is away (the player pauses with it, and plays on with it).
+        if (awayFromGame(useLive.getState())) break
         if (message.seek) youtubeCommand({ action: 'seek', seconds: message.time })
         youtubeCommand({ action: message.paused ? 'pause' : 'play' })
         break

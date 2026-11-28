@@ -237,6 +237,10 @@ fn set_cast(app: &AppHandle, on: bool) {
 /// screen. A hidden window never paints, and a TV page that doesn't paint can stall.
 const CAST_WINDOW_SHOWN: bool = false;
 
+/// Pauses the cast window's video for the game's pause (marking the one it paused) and lets it play on after.
+const CAST_HOLD: &str = "document.querySelectorAll('video').forEach(function (v) { if (!v.paused) { v.muted = true; v.pause(); v.dataset.wpHeld = '1'; } });";
+const CAST_RELEASE: &str = "document.querySelectorAll('video').forEach(function (v) { if (v.dataset.wpHeld === '1') { delete v.dataset.wpHeld; v.muted = true; var p = v.play(); if (p && p.catch) p.catch(function () {}); } });";
+
 /// The user agent of a smart TV (Samsung's Tizen): YouTube's TV page is for these.
 const CAST_USER_AGENT: &str = "Mozilla/5.0 (SMART-TV; Linux; Tizen 6.0) AppleWebKit/537.36 (KHTML, like Gecko) 76.0.3809.146/6.0 TV Safari/537.36";
 
@@ -263,21 +267,40 @@ const CAST_SCRIPT: &str = r#"(function () {
     Object.defineProperty(document, 'visibilityState', { configurable: true, get: function () { return 'visible'; } });
     document.addEventListener('visibilitychange', function (event) { event.stopImmediatePropagation(); }, true);
   } catch (error) {}
-  // The name the phone shows once connected: the TV page names itself after the TV it takes itself for ("Samsung
-  // SmartTV") when it tells YouTube's lounge, and the lounge tells the phone. It goes out as WestPlay.
-  var samsung = /Samsung(?:\+|%20| )SmartTV/gi;
-  function named(text) { return typeof text === 'string' ? text.replace(samsung, 'WestPlay') : text; }
+  // The name the phone shows once connected: the TV page names itself after the TV it takes itself for (Samsung's
+  // Tizen: "Samsung SmartTV", as a name, or as a brand and a model) when it tells YouTube's lounge, and the lounge
+  // tells the phone. It goes out as WestPlay Lite. What the lounge was told is on the address (`wpdbg`), for the log.
+  var seen = [];
+  function named(text) {
+    if (typeof text !== 'string') return text;
+    return text
+      .replace(/Samsung(?:\+|%20| )SmartTV/gi, 'WestPlay+Lite')
+      .replace(/Samsung/g, 'WestPlay')
+      .replace(/SmartTV/g, 'Lite');
+  }
   function lounge(url) { return typeof url === 'string' && url.indexOf('/lounge/') >= 0; }
+  function peek(url, body) {
+    try {
+      var keep = /(?:^|[&?])(name|device|deviceInfo|app|brand|model)=([^&]*)/g;
+      var found = [], match, text = String(url).split('?')[1] + '&' + String(body);
+      while ((match = keep.exec(text)) && found.length < 6) found.push(match[1] + '=' + match[2].slice(0, 120));
+      var line = found.join(' ');
+      if (line && seen.indexOf(line) < 0 && seen.length < 3) seen.push(line);
+    } catch (error) {}
+  }
   try {
     var open = XMLHttpRequest.prototype.open;
     var send = XMLHttpRequest.prototype.send;
     XMLHttpRequest.prototype.open = function (method, url) {
       this.westplayLounge = lounge(String(url));
-      if (this.westplayLounge) arguments[1] = named(String(url));
+      if (this.westplayLounge) { this.westplayUrl = named(String(url)); arguments[1] = this.westplayUrl; }
       return open.apply(this, arguments);
     };
     XMLHttpRequest.prototype.send = function (body) {
-      return send.call(this, this.westplayLounge ? named(body) : body);
+      if (!this.westplayLounge) return send.call(this, body);
+      var renamed = named(body);
+      peek(this.westplayUrl, renamed);
+      return send.call(this, renamed);
     };
     var fetched = window.fetch;
     if (fetched) {
@@ -286,28 +309,27 @@ const CAST_SCRIPT: &str = r#"(function () {
         if (lounge(url)) {
           if (typeof input === 'string') input = named(input);
           if (init && typeof init.body === 'string') init = Object.assign({}, init, { body: named(init.body) });
+          peek(typeof input === 'string' ? input : url, init && init.body);
         }
         return fetched.call(this, input, init);
       };
     }
   } catch (error) {}
-  function silence() {
-    var all = document.querySelectorAll('video,audio');
-    for (var i = 0; i < all.length; i++) all[i].muted = true;
-  }
   document.addEventListener('play', function (event) { if (event.target) event.target.muted = true; }, true);
-  setInterval(silence, 150);
   // The video's state on the address (`?wp=<1 paused or 0 playing>.<seconds>`, no page load): WestPlay sees nothing
   // else of this window, and the phone's pausing, playing and seeking reach the truck's player by it.
   setInterval(function () {
-    var video = document.querySelector('video');
-    if (!video) return;
     try {
-      var mark = (video.paused ? '1' : '0') + '.' + (Math.round(video.currentTime * 10) / 10);
+      var video = document.querySelector('video');
       var address = new URL(location.href);
-      if (address.searchParams.get('wp') === mark) return;
-      address.searchParams.set('wp', mark);
-      history.replaceState(history.state, '', address.pathname + address.search + address.hash);
+      var changed = false;
+      if (video) {
+        var mark = (video.paused ? '1' : '0') + '.' + (Math.round(video.currentTime * 10) / 10);
+        if (address.searchParams.get('wp') !== mark) { address.searchParams.set('wp', mark); changed = true; }
+      }
+      var debug = seen.join(' | ');
+      if (debug && address.searchParams.get('wpdbg') !== debug) { address.searchParams.set('wpdbg', debug); changed = true; }
+      if (changed) history.replaceState(history.state, '', address.pathname + address.search + address.hash);
     } catch (error) {}
   }, 500);
 })();"#;
@@ -384,8 +406,16 @@ fn watch_cast_address(app: AppHandle) {
         let mut last = String::new();
         let mut video: Option<String> = None;
         let mut mirror = CastMirror::default();
+        let mut game_paused = false;
         loop {
             let Some(window) = app.get_webview_window("cast") else { break };
+            // The game paused: the video in the cast window pauses too (or it plays on to its end and brings the
+            // phone's next video while the game is stopped), and plays on with the game, if it was playing.
+            let paused = westplay_host::GAME_PAUSED.load(std::sync::atomic::Ordering::Relaxed);
+            if paused != game_paused {
+                game_paused = paused;
+                let _ = window.eval(if paused { CAST_HOLD } else { CAST_RELEASE });
+            }
             if let Ok(url) = window.url() {
                 let plain = without_cast_mark(&url);
                 if plain != last {
@@ -446,7 +476,7 @@ fn open_cast_window(app: &AppHandle, pairing: &str) {
         .resizable(CAST_WINDOW_SHOWN)
         .shadow(CAST_WINDOW_SHOWN)
         // Small, and so is the video YouTube sends it: the truck's screen plays it, this window only listens.
-        .inner_size(320.0, 180.0)
+        .inner_size(256.0, 144.0)
         .user_agent(CAST_USER_AGENT)
         .initialization_script(CAST_SCRIPT)
         .build()

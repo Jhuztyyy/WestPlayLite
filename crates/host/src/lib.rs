@@ -229,6 +229,9 @@ pub fn mute_webview(controller: &webview2_com::Microsoft::Web::WebView2::Win32::
 /// page, which plays it. Set from any thread; the host takes it.
 pub static CAST_VIDEO: std::sync::Mutex<Option<String>> = std::sync::Mutex::new(None);
 
+/// WestPlay Lite: whether the game is paused, as the host last saw it: the cast window pauses with it.
+pub static GAME_PAUSED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// WestPlay Lite: what the phone did to the video it cast (paused or played, the second, whether it moved within the
 /// video), for the host to pass on to the page, which does it to the player. Set from any thread; the host takes it.
 pub static CAST_STATE: std::sync::Mutex<Option<(bool, f64, bool)>> = std::sync::Mutex::new(None);
@@ -1714,6 +1717,7 @@ pub fn run(mut config: Config, stop: Arc<AtomicBool>) -> Result<(), Error> {
             );
             let game_frame = plugin.heartbeat.load(Ordering::Acquire);
             let (electrics, paused) = (telemetry.electric_enabled, telemetry.paused);
+            GAME_PAUSED.store(paused, Ordering::Relaxed);
             let outside = camera.outside(truck.id.as_str(), cab_drawn, game_frame, electrics, paused);
             if outside != was_outside {
                 was_outside = outside;

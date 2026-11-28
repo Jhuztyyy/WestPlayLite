@@ -105,6 +105,11 @@ export function afterRunningTransition(next: () => void): void {
   running.updateCallbackDone.catch(() => {}).finally(next)
 }
 
+/** WestPlay Lite: screen changes happen at once. A View Transition takes a picture of the whole screen and animates
+ * two of them, which a weak GPU does in a second of nothing on the truck's screen (and its 15 frames a second show
+ * little of an animation anyway). */
+const INSTANT = true
+
 /** Calls `next` once the screen change animating now (if any) has finished, without hurrying it. */
 export function whenTransitionEnds(next: () => void): void {
   if (!running) {
@@ -120,7 +125,7 @@ export function whenTransitionEnds(next: () => void): void {
  * it begins from the current screen.
  */
 export function animateNavigation(launch: Launch | null, update: () => void): void {
-  if (typeof document.startViewTransition !== 'function') {
+  if (INSTANT || typeof document.startViewTransition !== 'function') {
     update()
     return
   }
@@ -173,7 +178,7 @@ function intoSidebar(root: HTMLElement): void {
  */
 export function animateAppearance(update: () => void): void {
   const root = document.documentElement
-  if (typeof document.startViewTransition !== 'function' || (running && root.dataset.transition !== 'appearance')) {
+  if (INSTANT || typeof document.startViewTransition !== 'function' || (running && root.dataset.transition !== 'appearance')) {
     update()
     return
   }
